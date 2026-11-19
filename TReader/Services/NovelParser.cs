@@ -15,13 +15,18 @@ namespace TReader.Services;
 public class NovelParser : INovelParser
 {
     // 常见章节标题正则表达式
-    private static readonly Regex ChapterPattern = new(
+    internal static readonly Regex ChapterPattern = new(
         @"^\s*(第[零一二三四五六七八九十百千万0-9]+[章节回卷部集篇]\s*.*|Chapter\s*\d+.*|【\s*\d+\s*】.*|正文\s*第.*|序[章言幕]?.*|楔子.*|尾声.*|番外.*)",
         RegexOptions.IgnoreCase | RegexOptions.Compiled
     );
 
     public async Task<Novel> ParseAsync(string filePath)
     {
+        if (IsEpubFile(filePath))
+        {
+            return await EpubParser.ParseAsync(filePath);
+        }
+
         var (content, lines) = await ReadFileAsync(filePath);
         var title = Path.GetFileNameWithoutExtension(filePath);
         return ParseFromLines(content, lines, title);
@@ -70,6 +75,25 @@ public class NovelParser : INovelParser
         }
 
         return novel;
+    }
+
+    private static bool IsEpubFile(string filePath)
+    {
+        if (string.Equals(Path.GetExtension(filePath), ".epub", StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
+
+        try
+        {
+            using var stream = File.OpenRead(filePath);
+            Span<byte> header = stackalloc byte[2];
+            return stream.Read(header) == 2 && header[0] == (byte)'P' && header[1] == (byte)'K';
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private async Task<(string Content, List<string> Lines)> ReadFileAsync(string filePath)

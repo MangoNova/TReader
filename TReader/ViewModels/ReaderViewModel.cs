@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Reactive;
 using System.Threading.Tasks;
@@ -27,6 +28,7 @@ public class ReaderViewModel : ViewModelBase
     private string _displayText = string.Empty;
     private string _originalContent = string.Empty; // 原始文本内容（用于段间距处理）
     private IBrush _foregroundBrush = new SolidColorBrush(Color.Parse(Defaults.ForegroundColor));
+    private readonly ObservableCollection<BookmarkInfo> _bookmarks = new();
 
     public string DisplayText
     {
@@ -89,16 +91,21 @@ public class ReaderViewModel : ViewModelBase
 
     public int CurrentLine => _currentReadLine;
 
+    public ObservableCollection<BookmarkInfo> Bookmarks => _bookmarks;
+
     public ReactiveCommand<string, Unit> ChangeFontSizeCommand { get; }
     public ReactiveCommand<string, Unit> ChangeColorCommand { get; }
     public ReactiveCommand<Unit, Unit> OpenTableOfContentsCommand { get; }
     public ReactiveCommand<Unit, Unit> PreviousChapterCommand { get; }
     public ReactiveCommand<Unit, Unit> NextChapterCommand { get; }
     public ReactiveCommand<Unit, Unit> BackToShelfCommand { get; }
+    public ReactiveCommand<Unit, Unit> ToggleBookmarkCommand { get; }
+    public ReactiveCommand<Unit, Unit> OpenBookmarksCommand { get; }
 
     public event Action? TableOfContentsRequested;
     public event Action? BackToShelfRequested;
     public event Action<int>? ScrollToLineRequested;
+    public event Action? BookmarksRequested;
 
     public ReaderViewModel() : this(new LibraryService(), new NovelParser(), new SettingsService())
     {
@@ -122,6 +129,8 @@ public class ReaderViewModel : ViewModelBase
         PreviousChapterCommand = ReactiveCommand.Create(GoPreviousChapter);
         NextChapterCommand = ReactiveCommand.Create(GoNextChapter);
         BackToShelfCommand = ReactiveCommand.Create(() => BackToShelfRequested?.Invoke());
+        ToggleBookmarkCommand = ReactiveCommand.Create(ToggleBookmark);
+        OpenBookmarksCommand = ReactiveCommand.Create(OpenBookmarks);
 
         LoadSettings();
     }
@@ -140,19 +149,28 @@ public class ReaderViewModel : ViewModelBase
         var filePath = _libraryService.GetBookFilePath(book);
         _novel = await _novelParser.ParseAsync(filePath);
         _originalContent = _novel.Content; // 保存原始内容
+
+        // 加载书签
+        _bookmarks.Clear();
+        foreach (var bookmark in _libraryService.GetBookmarks(book.Id))
+        {
+            _bookmarks.Add(bookmark);
+        }
+        this.RaisePropertyChanged(nameof(Bookmarks));
         UpdateDisplayText(); // 根据段间距设置生成显示文本
 
-        // 初始化当前阅读位置
-        _currentReadLine = book.LastReadLine;
-        _currentChapterIndex = FindChapterIndexByLine(book.LastReadLine);
+        // 初始化当前阅读位置（统一使用原始文本的 0-based 行号）
+        var savedLine = Math.Clamp(book.LastReadLine, 0, Math.Max(0, _novel.TotalLines - 1));
+        _currentReadLine = savedLine;
+        _currentChapterIndex = FindChapterIndexByLine(savedLine);
 
         this.RaisePropertyChanged(nameof(TotalChapters));
         this.RaisePropertyChanged(nameof(Chapters));
         this.RaisePropertyChanged(nameof(CurrentChapterTitle));
 
-        if (book.LastReadLine > 0)
+        if (savedLine > 0)
         {
-            ScrollToLineRequested?.Invoke(book.LastReadLine);
+            ScrollToLineRequested?.Invoke(savedLine);
         }
     }
 
@@ -173,6 +191,87 @@ public class ReaderViewModel : ViewModelBase
         var chapter = _novel.Chapters[chapterIndex];
         ScrollToLineRequested?.Invoke(chapter.StartLine);
         SaveProgress();
+    }
+
+    /// <summary>
+    /// 跳转到指定原始行号。
+    /// </summary>
+    public void GoToLine(int lineNumber)
+    {
+        if (_novel == null) return;
+
+        var targetLine = Math.Clamp(lineNumber, 0, Math.Max(0, _novel.TotalLines - 1));
+        _currentReadLine = targetLine;
+        CurrentChapterIndex = FindChapterIndexByLine(targetLine);
+        ScrollToLineRequested?.Invoke(targetLine);
+        SaveProgress();
+    }
+
+    /// <summary>
+    /// 打开书签列表。
+    /// </summary>
+    public void OpenBookmarks()
+    {
+        BookmarksRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// 添加或移除当前阅读位置的书签。
+    /// </summary>
+    public void ToggleBookmark()
+    {
+        if (_currentBook == null || _novel == null) return;
+
+        var existing = _bookmarks.FirstOrDefault(b => b.LineNumber == _currentReadLine);
+        if (existing != null)
+        {
+            DeleteBookmark(existing.Id);
+            return;
+        }
+
+        var preview = _novel.Lines.ElementAtOrDefault(_currentReadLine) ?? string.Empty;
+        var bookmark = new BookmarkInfo
+        {
+            Id = Guid.NewGuid().ToString("N"),
+            Title = BuildBookmarkTitle(preview),
+            ChapterTitle = CurrentChapterTitle,
+            LineNumber = _currentReadLine,
+            CreatedAt = DateTime.Now
+        };
+
+        _libraryService.AddBookmark(_currentBook.Id, bookmark);
+        _bookmarks.Insert(0, bookmark);
+        this.RaisePropertyChanged(nameof(Bookmarks));
+    }
+
+    /// <summary>
+    /// 删除指定书签。
+    /// </summary>
+    public void DeleteBookmark(string bookmarkId)
+    {
+        if (_currentBook == null) return;
+
+        _libraryService.RemoveBookmark(_currentBook.Id, bookmarkId);
+        var bookmark = _bookmarks.FirstOrDefault(b => b.Id == bookmarkId);
+        if (bookmark != null)
+        {
+            _bookmarks.Remove(bookmark);
+        }
+
+        this.RaisePropertyChanged(nameof(Bookmarks));
+    }
+
+    private string BuildBookmarkTitle(string preview)
+    {
+        var text = preview.Trim();
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return string.IsNullOrWhiteSpace(CurrentChapterTitle)
+                ? $"第 {_currentReadLine + 1} 行"
+                : CurrentChapterTitle;
+        }
+
+        return text.Length <= 24 ? text : text[..24] + "…";
     }
 
     public void GoPreviousChapter()
@@ -200,15 +299,24 @@ public class ReaderViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 根据滚动位置更新当前行号并保存进度
+    /// 请求滚动到当前阅读位置（例如窗口缩放结束后恢复顶部行）。
     /// </summary>
-    public void UpdateCurrentLine(int lineNumber)
+    public void RequestScrollToCurrentLine()
     {
-        if (lineNumber < 0) lineNumber = 0;
-        _currentReadLine = lineNumber;
+        if (_novel == null) return;
+        ScrollToLineRequested?.Invoke(_currentReadLine);
+    }
+
+    /// <summary>
+    /// 根据显示文本的滚动位置更新原始阅读进度并保存
+    /// </summary>
+    public void UpdateCurrentLine(int displayLineNumber)
+    {
+        var originalLine = DisplayLineToOriginalLine(displayLineNumber);
+        _currentReadLine = originalLine;
 
         // 同时更新章节索引
-        int newChapterIndex = FindChapterIndexByLine(lineNumber);
+        int newChapterIndex = FindChapterIndexByLine(originalLine);
         if (newChapterIndex != _currentChapterIndex)
         {
             CurrentChapterIndex = newChapterIndex;
@@ -216,6 +324,40 @@ public class ReaderViewModel : ViewModelBase
 
         // 保存进度
         SaveProgress();
+    }
+
+    /// <summary>
+    /// 将原始文本行号转换为显示文本行号。
+    /// 段间距会在每行后插入空行，因此需要按插入数量换算。
+    /// </summary>
+    public int GetDisplayLineNumber(int originalLineNumber)
+    {
+        if (_novel == null) return Math.Max(0, originalLineNumber);
+
+        var originalLine = Math.Clamp(originalLineNumber, 0, Math.Max(0, _novel.TotalLines - 1));
+        var emptyLineCount = GetInsertedEmptyLineCount();
+        return emptyLineCount == 0 ? originalLine : originalLine * (emptyLineCount + 1);
+    }
+
+    private int DisplayLineToOriginalLine(int displayLineNumber)
+    {
+        if (_novel == null) return Math.Max(0, displayLineNumber);
+
+        var emptyLineCount = GetInsertedEmptyLineCount();
+        var originalLine = emptyLineCount == 0
+            ? displayLineNumber
+            : displayLineNumber / (emptyLineCount + 1);
+
+        return Math.Clamp(originalLine, 0, Math.Max(0, _novel.TotalLines - 1));
+    }
+
+    private int GetInsertedEmptyLineCount()
+    {
+        var paragraphSpacing = _settings?.ParagraphSpacing ?? 0;
+        if (paragraphSpacing < 0.5) return 0;
+
+        var emptyLineCount = (int)paragraphSpacing;
+        return Math.Max(1, emptyLineCount);
     }
 
     public double LineHeight
@@ -234,7 +376,11 @@ public class ReaderViewModel : ViewModelBase
 
     public string? FontFamily
     {
-        get => _settings?.FontFamily;
+        get
+        {
+            var fontFamily = _settings?.FontFamily;
+            return string.IsNullOrWhiteSpace(fontFamily) ? Defaults.FontFamily : fontFamily;
+        }
         set
         {
             if (_settings != null && _settings.FontFamily != value)

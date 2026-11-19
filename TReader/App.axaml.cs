@@ -19,10 +19,12 @@ namespace TReader
         private ControlPanelWindow? _controlPanelWindow;
         private MainWindow? _readerWindow;
         private TableOfContentsWindow? _tocWindow;
+        private BookmarksWindow? _bookmarksWindow;
 
         private ControlPanelViewModel? _controlPanelViewModel;
         private ReaderViewModel? _readerViewModel;
         private TableOfContentsViewModel? _tocViewModel;
+        private BookmarksViewModel? _bookmarksViewModel;
 
         // 共享服务实例
         private readonly ILibraryService _libraryService = new LibraryService();
@@ -84,6 +86,7 @@ namespace TReader
                 _controlPanelViewModel = new ControlPanelViewModel(_libraryService, _novelParser, _settingsService);
                 _readerViewModel = new ReaderViewModel(_libraryService, _novelParser, _settingsService);
                 _tocViewModel = new TableOfContentsViewModel();
+                _bookmarksViewModel = new BookmarksViewModel();
 
                 // 创建 ControlPanel 窗口（书架/设置）
                 _controlPanelWindow = new ControlPanelWindow
@@ -96,11 +99,11 @@ namespace TReader
                 {
                     var files = await _controlPanelWindow.StorageProvider.OpenFilePickerAsync(new FilePickerOpenOptions
                     {
-                        Title = "选择 TXT 文件",
+                        Title = "选择小说文件",
                         AllowMultiple = false,
                         FileTypeFilter = new[]
                         {
-                            new FilePickerFileType("文本文件") { Patterns = new[] { "*.txt" } }
+                            new FilePickerFileType("小说文件") { Patterns = new[] { "*.txt", "*.epub" } }
                         }
                     });
                     return files.Count > 0 ? files[0] : null;
@@ -151,10 +154,16 @@ namespace TReader
                 // 订阅阅读器事件
                 _readerViewModel.BackToShelfRequested += OnBackToShelf;
                 _readerViewModel.TableOfContentsRequested += OnTableOfContentsRequested;
+                _readerViewModel.BookmarksRequested += OnBookmarksRequested;
 
                 // 订阅目录事件
                 _tocViewModel.ChapterSelected += OnChapterSelected;
                 _tocViewModel.CloseRequested += OnTocClosed;
+
+                // 订阅书签事件
+                _bookmarksViewModel.BookmarkSelected += OnBookmarkSelected;
+                _bookmarksViewModel.BookmarkDeleted += OnBookmarkDeleted;
+                _bookmarksViewModel.CloseRequested += OnBookmarksClosed;
 
                 // 初始化时应用字体
                 ApplyGlobalFont(_settingsService.Load().FontFamily);
@@ -171,6 +180,7 @@ namespace TReader
                     {
                         _readerWindow?.Close();
                         _tocWindow?.Close();
+                        _bookmarksWindow?.Close();
                     }
                 };
 
@@ -318,6 +328,7 @@ namespace TReader
             // 隐藏阅读窗口，显示书架
             _readerWindow.Hide();
             _tocWindow?.Close();
+            _bookmarksWindow?.Close();
             _controlPanelWindow.Show();
 
             // 禁用"刷新阅读窗口"菜单项
@@ -365,16 +376,50 @@ namespace TReader
             _tocWindow?.Close();
         }
 
+        private void OnBookmarksRequested()
+        {
+            if (_readerViewModel == null || _readerWindow == null || _bookmarksViewModel == null) return;
+
+            _bookmarksViewModel.Initialize(_readerViewModel.Bookmarks);
+
+            if (_bookmarksWindow == null || !_bookmarksWindow.IsVisible)
+            {
+                _bookmarksWindow = new BookmarksWindow
+                {
+                    DataContext = _bookmarksViewModel
+                };
+            }
+
+            _bookmarksWindow.ShowDialog(_readerWindow);
+        }
+
+        private void OnBookmarkSelected(int lineNumber)
+        {
+            _readerViewModel?.GoToLine(lineNumber);
+            _bookmarksWindow?.Close();
+        }
+
+        private void OnBookmarkDeleted(string bookmarkId)
+        {
+            _readerViewModel?.DeleteBookmark(bookmarkId);
+        }
+
+        private void OnBookmarksClosed()
+        {
+            _bookmarksWindow?.Close();
+        }
+
         private void ApplyGlobalFont(string? fontFamilyName)
         {
             var fontFamily = string.IsNullOrEmpty(fontFamilyName)
-                ? FontFamily.Default
+                ? new FontFamily(TReader.Models.Defaults.FontFamily)
                 : new FontFamily(fontFamilyName);
 
             // 应用到所有已创建的窗口
             if (_controlPanelWindow != null) _controlPanelWindow.FontFamily = fontFamily;
             if (_readerWindow != null) _readerWindow.FontFamily = fontFamily;
             if (_tocWindow != null) _tocWindow.FontFamily = fontFamily;
+            if (_bookmarksWindow != null) _bookmarksWindow.FontFamily = fontFamily;
         }
     }
 }

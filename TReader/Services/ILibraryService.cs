@@ -33,4 +33,19 @@ public interface ILibraryService
     /// 获取书籍缓存文件的完整路径
     /// </summary>
     string GetBookFilePath(BookInfo book);
+
+    /// <summary>
+    /// 获取书籍书签
+    /// </summary>
+    List<BookmarkInfo> GetBookmarks(string bookId);
+
+    /// <summary>
+    /// 添加书签
+    /// </summary>
+    void AddBookmark(string bookId, BookmarkInfo bookmark);
+
+    /// <summary>
+    /// 删除书签
+    /// </summary>
+    void RemoveBookmark(string bookId, string bookmarkId);
 }

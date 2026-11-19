@@ -18,10 +18,7 @@ public class SettingsService : ISettingsService
 
     public SettingsService()
     {
-        var appDataPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "TReader"
-        );
+        var appDataPath = AppPaths.DataDirectory;
         Directory.CreateDirectory(appDataPath);
         _settingsPath = Path.Combine(appDataPath, "settings.json");
     }

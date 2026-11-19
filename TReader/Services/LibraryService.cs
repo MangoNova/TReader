@@ -25,10 +25,7 @@ public class LibraryService : ILibraryService
 
     public LibraryService()
     {
-        _appDataPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "TReader"
-        );
+        _appDataPath = AppPaths.DataDirectory;
         _booksPath = Path.Combine(_appDataPath, "books");
         _libraryPath = Path.Combine(_appDataPath, "library.json");
 
@@ -46,7 +43,8 @@ public class LibraryService : ILibraryService
     public async Task<BookInfo> ImportBookAsync(string filePath)
     {
         var bookId = Guid.NewGuid().ToString("N");
-        var fileName = $"{bookId}.txt";
+        var extension = NormalizeBookExtension(filePath);
+        var fileName = $"{bookId}{extension}";
         var cachedPath = Path.Combine(_booksPath, fileName);
 
         // 复制文件到缓存目录
@@ -101,6 +99,45 @@ public class LibraryService : ILibraryService
     public string GetBookFilePath(BookInfo book)
     {
         return Path.Combine(_booksPath, book.CachedFileName);
+    }
+
+    public List<BookmarkInfo> GetBookmarks(string bookId)
+    {
+        var book = _books.FirstOrDefault(b => b.Id == bookId);
+        return book?.Bookmarks ?? new List<BookmarkInfo>();
+    }
+
+    public void AddBookmark(string bookId, BookmarkInfo bookmark)
+    {
+        var book = _books.FirstOrDefault(b => b.Id == bookId);
+        if (book == null) return;
+
+        book.Bookmarks ??= new List<BookmarkInfo>();
+        book.Bookmarks.Add(bookmark);
+        SaveLibrary();
+    }
+
+    public void RemoveBookmark(string bookId, string bookmarkId)
+    {
+        var book = _books.FirstOrDefault(b => b.Id == bookId);
+        if (book?.Bookmarks == null) return;
+
+        var bookmark = book.Bookmarks.FirstOrDefault(b => b.Id == bookmarkId);
+        if (bookmark == null) return;
+
+        book.Bookmarks.Remove(bookmark);
+        SaveLibrary();
+    }
+
+    private static string NormalizeBookExtension(string filePath)
+    {
+        var extension = Path.GetExtension(filePath).ToLowerInvariant();
+        return extension switch
+        {
+            ".epub" => ".epub",
+            ".txt" => ".txt",
+            _ => ".txt"
+        };
     }
 
     private List<BookInfo> LoadLibrary()

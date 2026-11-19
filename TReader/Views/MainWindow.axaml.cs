@@ -1,3 +1,4 @@
+using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Input;
 using System;
@@ -8,11 +9,14 @@ namespace TReader.Views;
 public partial class MainWindow : Window
 {
     private Avalonia.Threading.DispatcherTimer _timer;
+    private Avalonia.Threading.DispatcherTimer _hideDelayTimer;
     private bool _isResizing;
-    private Avalonia.Point _resizeStartPoint;
+    private WindowEdge _resizeEdge;
+    private Avalonia.PixelPoint _resizeStartScreen;
     private double _startWidth;
     private double _startHeight;
-    private string _resizeDirection = "";
+    private int _startX;
+    private int _startY;
 
     public MainWindow()
     {
@@ -31,7 +35,7 @@ public partial class MainWindow : Window
         _timer.Tick += (s, e) =>
         {
             // 如果 Ctrl 被按下
-            if ((TReader.Services.WindowHelper.GetAsyncKeyState(TReader.Services.WindowHelper.VK_CONTROL) & 0x8000) != 0)
+            if (IsControlPressed())
             {
                 // 强制置顶，允许用户交互（如双击）
                 if (!Topmost)
@@ -42,11 +46,33 @@ public partial class MainWindow : Window
         };
         _timer.Start();
 
+        // 延迟隐藏：鼠标移出后保留一小段时间，方便去拖动边缘调整大小
+        _hideDelayTimer = new Avalonia.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(1200)
+        };
+        _hideDelayTimer.Tick += (s, e) =>
+        {
+            _hideDelayTimer.Stop();
+
+            // 缩放中或按住 Ctrl 时不隐藏
+            if (_isResizing || IsControlPressed()) return;
+
+            if (container != null) container.Opacity = 0;
+            Topmost = false;
+        };
+
+        // 鼠标进入时取消延迟隐藏
+        this.PointerEntered += (s, e) =>
+        {
+            _hideDelayTimer.Stop();
+        };
+
         // 双击显示：只有按住 Ctrl 时才响应
         this.DoubleTapped += (s, e) =>
         {
             // 检查 Ctrl 键是否被按下
-            if ((TReader.Services.WindowHelper.GetAsyncKeyState(TReader.Services.WindowHelper.VK_CONTROL) & 0x8000) == 0)
+            if (!IsControlPressed())
             {
                 return; // Ctrl 没有按下，忽略双击
             }
@@ -55,73 +81,120 @@ public partial class MainWindow : Window
             Topmost = true;
         };
 
-        // 移出隐藏：置底（取消置顶），以便不影响其他软件使用
+        // 移出后延迟隐藏，避免鼠标稍微移开界面就立刻消失
         this.PointerExited += (s, e) =>
         {
-            // 如果正在缩放，不要触发隐藏
-            if (_isResizing) return;
+            // 如果正在缩放或按住 Ctrl，不要触发隐藏
+            if (_isResizing || IsControlPressed()) return;
 
-            if (container != null) container.Opacity = 0;
-            Topmost = false;
+            _hideDelayTimer.Start();
         };
 
-        // 缩放区域事件绑定
-        SetupResizeHandlers();
     }
 
-    private void SetupResizeHandlers()
+    private static bool IsControlPressed()
     {
-        var resizeRight = this.FindControl<Border>("ResizeRight");
-        var resizeBottom = this.FindControl<Border>("ResizeBottom");
-        var resizeBottomRight = this.FindControl<Border>("ResizeBottomRight");
-
-        if (resizeRight != null) BindResizeEvents(resizeRight, "right");
-        if (resizeBottom != null) BindResizeEvents(resizeBottom, "bottom");
-        if (resizeBottomRight != null) BindResizeEvents(resizeBottomRight, "bottomright");
+        return (TReader.Services.WindowHelper.GetAsyncKeyState(TReader.Services.WindowHelper.VK_CONTROL) & 0x8000) != 0;
     }
 
-    private void BindResizeEvents(Border border, string direction)
+    private void OnResizePointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
     {
-        border.PointerPressed += (s, e) =>
+        if (sender is not Control control) return;
+        if (!e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) return;
+
+        var edgeText = control.Tag?.ToString();
+        if (string.IsNullOrEmpty(edgeText) || !Enum.TryParse<WindowEdge>(edgeText, true, out var edge))
         {
-            _isResizing = true;
-            _resizeDirection = direction;
-            _resizeStartPoint = e.GetPosition(this);
-            _startWidth = Width;
-            _startHeight = Height;
-            e.Pointer.Capture(border);
-            e.Handled = true;
-        };
+            return;
+        }
 
-        border.PointerMoved += (s, e) =>
+        _hideDelayTimer.Stop();
+        _isResizing = true;
+        _resizeEdge = edge;
+        _resizeStartScreen = this.PointToScreen(e.GetPosition(this));
+        _startWidth = Width;
+        _startHeight = Height;
+        _startX = Position.X;
+        _startY = Position.Y;
+
+        e.Pointer.Capture(this);
+        e.Handled = true;
+    }
+
+    protected override void OnPointerMoved(Avalonia.Input.PointerEventArgs e)
+    {
+        base.OnPointerMoved(e);
+        if (!_isResizing) return;
+
+        var currentScreen = this.PointToScreen(e.GetPosition(this));
+        var deltaX = currentScreen.X - _resizeStartScreen.X;
+        var deltaY = currentScreen.Y - _resizeStartScreen.Y;
+
+        var newX = (double)_startX;
+        var newY = (double)_startY;
+        var newWidth = _startWidth;
+        var newHeight = _startHeight;
+
+        switch (_resizeEdge)
         {
-            if (!_isResizing) return;
+            case WindowEdge.West:
+                newWidth -= deltaX;
+                newX += deltaX;
+                break;
+            case WindowEdge.East:
+                newWidth += deltaX;
+                break;
+            case WindowEdge.North:
+                newHeight -= deltaY;
+                newY += deltaY;
+                break;
+            case WindowEdge.South:
+                newHeight += deltaY;
+                break;
+            case WindowEdge.NorthWest:
+                newWidth -= deltaX;
+                newHeight -= deltaY;
+                newX += deltaX;
+                newY += deltaY;
+                break;
+            case WindowEdge.NorthEast:
+                newWidth += deltaX;
+                newHeight -= deltaY;
+                newY += deltaY;
+                break;
+            case WindowEdge.SouthWest:
+                newWidth -= deltaX;
+                newHeight += deltaY;
+                newX += deltaX;
+                break;
+            case WindowEdge.SouthEast:
+                newWidth += deltaX;
+                newHeight += deltaY;
+                break;
+        }
 
-            var currentPoint = e.GetPosition(this);
-            var deltaX = currentPoint.X - _resizeStartPoint.X;
-            var deltaY = currentPoint.Y - _resizeStartPoint.Y;
+        // 限制最小尺寸，避免拖拽时窗口塌陷
+        var clampedWidth = Math.Max(Defaults.MinWindowWidth, newWidth);
+        var clampedHeight = Math.Max(Defaults.MinWindowHeight, newHeight);
 
-            if (_resizeDirection.Contains("right"))
-            {
-                var newWidth = _startWidth + deltaX;
-                if (newWidth >= MinWidth && newWidth >= Defaults.MinWindowWidth)
-                    Width = newWidth;
-            }
+        Width = clampedWidth;
+        Height = clampedHeight;
+        Position = new Avalonia.PixelPoint((int)newX, (int)newY);
+    }
 
-            if (_resizeDirection.Contains("bottom"))
-            {
-                var newHeight = _startHeight + deltaY;
-                if (newHeight >= MinHeight && newHeight >= Defaults.MinWindowHeight)
-                    Height = newHeight;
-            }
-        };
+    protected override void OnPointerReleased(Avalonia.Input.PointerReleasedEventArgs e)
+    {
+        base.OnPointerReleased(e);
+        if (!_isResizing) return;
 
-        border.PointerReleased += (s, e) =>
+        _isResizing = false;
+        e.Pointer.Capture(null);
+
+        // 缩放结束后恢复当前顶部行，避免进度因视口变化偏移
+        if (DataContext is TReader.ViewModels.ReaderViewModel vm)
         {
-            _isResizing = false;
-            _resizeDirection = "";
-            e.Pointer.Capture(null);
-        };
+            vm.RequestScrollToCurrentLine();
+        }
     }
 
     protected override void OnOpened(EventArgs e)

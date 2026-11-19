@@ -24,6 +24,9 @@ public partial class ReaderView : UserControl
         // 这个 Handler 会在 Tunneling 阶段触发（即从父级到子级），先于 TextEditor 的处理
         this.AddHandler(PointerPressedEvent, OnPreviewPointerPressed, RoutingStrategies.Tunnel);
 
+        // 拦截方向键，避免 TextEditor 移动光标导致进度跳回开头
+        this.AddHandler(Avalonia.Input.InputElement.KeyDownEvent, OnPreviewKeyDown, RoutingStrategies.Tunnel);
+
         // 监听滚动事件以保存阅读进度
         if (_textEditor?.TextArea?.TextView != null)
         {
@@ -44,18 +47,80 @@ public partial class ReaderView : UserControl
         if ((DateTime.Now - _lastScrollSaveTime).TotalMilliseconds < 500) return;
         _lastScrollSaveTime = DateTime.Now;
 
-        // 获取当前可见的中间行（与目录跳转行为一致）
+        // 获取当前可见区域顶部的文档行，窗口大小变化时比中间行更稳定
         if (_textEditor?.TextArea?.TextView != null && DataContext is ReaderViewModel vm)
         {
             var textView = _textEditor.TextArea.TextView;
-            // 计算窗口中间位置的 Y 坐标
-            var middleY = textView.ScrollOffset.Y + (textView.Bounds.Height / 2);
-            var middleLine = textView.GetDocumentLineByVisualTop(middleY);
-            if (middleLine != null)
+            var topLine = textView.GetDocumentLineByVisualTop(textView.ScrollOffset.Y);
+            if (topLine != null)
             {
-                vm.UpdateCurrentLine(middleLine.LineNumber);
+                // AvaloniaEdit 的 LineNumber 从 1 开始，统一转换为 0-based
+                vm.UpdateCurrentLine(topLine.LineNumber - 1);
             }
         }
+    }
+
+    private void OnPreviewKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)
+    {
+        if (DataContext is not ReaderViewModel vm) return;
+
+        switch (e.Key)
+        {
+            case Avalonia.Input.Key.Up:
+            case Avalonia.Input.Key.Left:
+            case Avalonia.Input.Key.PageUp:
+                ScrollPage(false);
+                e.Handled = true;
+                break;
+
+            case Avalonia.Input.Key.Down:
+            case Avalonia.Input.Key.Right:
+            case Avalonia.Input.Key.PageDown:
+                ScrollPage(true);
+                e.Handled = true;
+                break;
+
+            case Avalonia.Input.Key.B:
+                vm.ToggleBookmark();
+                e.Handled = true;
+                break;
+
+            case Avalonia.Input.Key.M:
+                vm.OpenBookmarks();
+                e.Handled = true;
+                break;
+        }
+    }
+
+    private void ScrollPage(bool forward)
+    {
+        if (_textEditor?.TextArea == null) return;
+
+        _textEditor.ApplyTemplate();
+
+        // 直接按像素滚动，避免长段落/自动换行时按文档行翻页卡住
+        var scrollable = (Avalonia.Controls.Primitives.IScrollable)_textEditor.TextArea;
+        var viewportHeight = scrollable.Viewport.Height;
+        if (viewportHeight <= 0)
+        {
+            viewportHeight = _textEditor.ViewportHeight;
+        }
+
+        if (viewportHeight <= 0)
+        {
+            viewportHeight = _textEditor.Bounds.Height;
+        }
+
+        var maxOffset = Math.Max(0, scrollable.Extent.Height - viewportHeight);
+        var currentY = scrollable.Offset.Y;
+        var targetY = Math.Clamp(currentY + (forward ? viewportHeight : -viewportHeight), 0, maxOffset);
+
+        if (Math.Abs(targetY - currentY) < 0.5)
+        {
+            return;
+        }
+
+        scrollable.Offset = new Vector(scrollable.Offset.X, targetY);
     }
 
     private void OnPreviewPointerPressed(object? sender, Avalonia.Input.PointerPressedEventArgs e)
@@ -286,11 +351,18 @@ public partial class ReaderView : UserControl
         // 设置标志位，防止滚动事件覆盖保存的进度
         _isInitializingScroll = true;
 
+        // 外部传入的是原始文本 0-based 行号，需要转换为显示文本行号
+        var displayLine = lineNumber;
+        if (DataContext is ReaderViewModel vm)
+        {
+            displayLine = vm.GetDisplayLineNumber(lineNumber);
+        }
+
         // 使用重试机制，确保文本加载完成后再滚动
-        ScrollToLineWithRetry(lineNumber, 10); // 最多重试10次
+        ScrollToLineWithRetry(displayLine, 10); // 最多重试10次
     }
 
-    private void ScrollToLineWithRetry(int lineNumber, int retriesLeft)
+    private void ScrollToLineWithRetry(int displayLineNumber, int retriesLeft)
     {
         Dispatcher.UIThread.Post(() =>
         {
@@ -301,9 +373,10 @@ public partial class ReaderView : UserControl
             }
 
             // 如果文本已加载且行号有效，执行滚动
-            if (lineNumber > 0 && lineNumber <= _textEditor.LineCount)
+            // displayLineNumber 为 0-based，ScrollTo 使用 1-based 行号
+            if (displayLineNumber >= 0 && displayLineNumber < _textEditor.LineCount)
             {
-                _textEditor.ScrollToLine(lineNumber);
+                _textEditor.ScrollTo(displayLineNumber + 1, -1, AvaloniaEdit.Rendering.VisualYPosition.LineTop, 0, 0);
 
                 // 延迟重置标志位
                 Dispatcher.UIThread.Post(() =>
@@ -319,7 +392,7 @@ public partial class ReaderView : UserControl
                 {
                     timer.Stop();
                     timer.Dispose();
-                    ScrollToLineWithRetry(lineNumber, retriesLeft - 1);
+                    ScrollToLineWithRetry(displayLineNumber, retriesLeft - 1);
                 };
                 timer.Start();
             }

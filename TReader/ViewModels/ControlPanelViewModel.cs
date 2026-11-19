@@ -32,6 +32,25 @@ public class ControlPanelViewModel : ViewModelBase
     private Color _editForegroundColor;
     private Color _editBackgroundColor;
     private string? _editFontFamily;
+    private bool _isBlackThemeSelected;
+    private bool _isWhiteThemeSelected;
+
+    private static readonly Color BlackThemeForeground = Color.Parse(Defaults.BlackThemeForegroundColor);
+    private static readonly Color BlackThemeBackground = Color.Parse(Defaults.BlackThemeBackgroundColor);
+    private static readonly Color WhiteThemeForeground = Color.Parse(Defaults.WhiteThemeForegroundColor);
+    private static readonly Color WhiteThemeBackground = Color.Parse(Defaults.WhiteThemeBackgroundColor);
+
+    // 推荐阅读字体，优先显示在字体下拉框顶部
+    private static readonly string[] RecommendedFonts =
+    {
+        Defaults.FontFamily,
+        "Microsoft YaHei",
+        "DengXian",
+        "SimSun",
+        "KaiTi",
+        "Source Han Serif SC",
+        "Noto Serif CJK SC"
+    };
 
     public ObservableCollection<BookInfo> Books { get; } = new();
     public ObservableCollection<string> AvailableFonts { get; } = new();
@@ -55,8 +74,7 @@ public class ControlPanelViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _isSettingsMode, value);
-            this.RaisePropertyChanged(nameof(ShelfColor));
-            this.RaisePropertyChanged(nameof(SettingsColor));
+            RefreshNavigationState();
 
             // 进入设置页面时加载配置
             if (value)
@@ -72,15 +90,29 @@ public class ControlPanelViewModel : ViewModelBase
         set
         {
             this.RaiseAndSetIfChanged(ref _isTutorialMode, value);
-            this.RaisePropertyChanged(nameof(ShelfColor));
-            this.RaisePropertyChanged(nameof(SettingsColor));
-            this.RaisePropertyChanged(nameof(TutorialColor));
+            RefreshNavigationState();
         }
     }
 
-    public IBrush ShelfColor => !IsSettingsMode && !IsTutorialMode ? Brushes.White : Brush.Parse("#AAAAAA");
-    public IBrush SettingsColor => IsSettingsMode ? Brushes.White : Brush.Parse("#AAAAAA");
-    public IBrush TutorialColor => IsTutorialMode ? Brushes.White : Brush.Parse("#AAAAAA");
+    public IBrush ShelfNavBackground =>
+        !IsSettingsMode && !IsTutorialMode ? Brush.Parse("#16A34A") : Brushes.Transparent;
+
+    public IBrush SettingsNavBackground =>
+        IsSettingsMode ? Brush.Parse("#16A34A") : Brushes.Transparent;
+
+    public IBrush TutorialNavBackground =>
+        IsTutorialMode ? Brush.Parse("#16A34A") : Brushes.Transparent;
+
+    public IBrush ShelfNavForeground =>
+        !IsSettingsMode && !IsTutorialMode ? Brushes.White : Brush.Parse("#64748B");
+
+    public IBrush SettingsNavForeground =>
+        IsSettingsMode ? Brushes.White : Brush.Parse("#64748B");
+
+    public IBrush TutorialNavForeground =>
+        IsTutorialMode ? Brushes.White : Brush.Parse("#64748B");
+
+    public bool HasBooks => Books.Count > 0;
 
     // 编辑中的设置属性（绑定到 UI）
     public double FontSize
@@ -104,14 +136,57 @@ public class ControlPanelViewModel : ViewModelBase
     public Color ForegroundColor
     {
         get => _editForegroundColor;
-        set => this.RaiseAndSetIfChanged(ref _editForegroundColor, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _editForegroundColor, value);
+            RefreshThemeSelection();
+        }
     }
 
     public Color BackgroundColor
     {
         get => _editBackgroundColor;
-        set => this.RaiseAndSetIfChanged(ref _editBackgroundColor, value);
+        set
+        {
+            this.RaiseAndSetIfChanged(ref _editBackgroundColor, value);
+            RefreshThemeSelection();
+        }
     }
+
+    public bool IsBlackThemeSelected
+    {
+        get => _isBlackThemeSelected;
+        private set
+        {
+            if (_isBlackThemeSelected == value) return;
+            _isBlackThemeSelected = value;
+            this.RaisePropertyChanged();
+            this.RaisePropertyChanged(nameof(BlackThemeCardBorder));
+        }
+    }
+
+    public bool IsWhiteThemeSelected
+    {
+        get => _isWhiteThemeSelected;
+        private set
+        {
+            if (_isWhiteThemeSelected == value) return;
+            _isWhiteThemeSelected = value;
+            this.RaisePropertyChanged();
+            this.RaisePropertyChanged(nameof(WhiteThemeCardBorder));
+        }
+    }
+
+    public IBrush BlackPreviewForeground => new SolidColorBrush(BlackThemeForeground);
+    public IBrush BlackPreviewBackground => new SolidColorBrush(BlackThemeBackground);
+    public IBrush WhitePreviewForeground => new SolidColorBrush(WhiteThemeForeground);
+    public IBrush WhitePreviewBackground => new SolidColorBrush(WhiteThemeBackground);
+
+    public IBrush BlackThemeCardBorder =>
+        IsBlackThemeSelected ? Brush.Parse("#27AE60") : Brush.Parse("#3A3A3A");
+
+    public IBrush WhiteThemeCardBorder =>
+        IsWhiteThemeSelected ? Brush.Parse("#27AE60") : Brush.Parse("#555555");
 
     public string? FontFamily
     {
@@ -128,6 +203,8 @@ public class ControlPanelViewModel : ViewModelBase
     public ReactiveCommand<Unit, Unit> SaveSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> CancelSettingsCommand { get; }
     public ReactiveCommand<Unit, Unit> ResetToDefaultCommand { get; }
+    public ReactiveCommand<Unit, Unit> ApplyBlackThemeCommand { get; }
+    public ReactiveCommand<Unit, Unit> ApplyWhiteThemeCommand { get; }
 
     public event Action<BookInfo>? BookOpened;
     public event Action? SettingsSaved; // 通知设置已保存
@@ -161,6 +238,8 @@ public class ControlPanelViewModel : ViewModelBase
         SaveSettingsCommand = ReactiveCommand.Create(SaveSettings);
         CancelSettingsCommand = ReactiveCommand.Create(CancelSettings);
         ResetToDefaultCommand = ReactiveCommand.CreateFromTask(ResetToDefaultAsync);
+        ApplyBlackThemeCommand = ReactiveCommand.Create(() => ApplyTheme(BlackThemeForeground, BlackThemeBackground));
+        ApplyWhiteThemeCommand = ReactiveCommand.Create(() => ApplyTheme(WhiteThemeForeground, WhiteThemeBackground));
 
         LoadBooks();
     }
@@ -182,17 +261,31 @@ public class ControlPanelViewModel : ViewModelBase
         else
             _editBackgroundColor = Color.Parse(Defaults.BackgroundColor);
 
-        _editFontFamily = settings.FontFamily;
-
         // 加载字体列表
         if (AvailableFonts.Count == 0)
         {
-            var fontNames = FontManager.Current.SystemFonts.Select(f => f.Name).OrderBy(n => n);
-            foreach (var name in fontNames)
+            var systemFontNames = FontManager.Current.SystemFonts
+                .Select(f => f.Name)
+                .ToList();
+
+            foreach (var recommendedFont in RecommendedFonts)
             {
-                AvailableFonts.Add(name);
+                if (systemFontNames.Contains(recommendedFont, StringComparer.OrdinalIgnoreCase))
+                {
+                    AvailableFonts.Add(recommendedFont);
+                }
+            }
+
+            foreach (var name in systemFontNames.OrderBy(n => n))
+            {
+                if (!AvailableFonts.Contains(name, StringComparer.OrdinalIgnoreCase))
+                {
+                    AvailableFonts.Add(name);
+                }
             }
         }
+
+        _editFontFamily = ResolveFontFamily(settings.FontFamily);
 
         // 通知 UI 刷新
         this.RaisePropertyChanged(nameof(FontSize));
@@ -201,6 +294,50 @@ public class ControlPanelViewModel : ViewModelBase
         this.RaisePropertyChanged(nameof(ForegroundColor));
         this.RaisePropertyChanged(nameof(BackgroundColor));
         this.RaisePropertyChanged(nameof(FontFamily));
+        RefreshThemeSelection();
+    }
+
+    private string ResolveFontFamily(string? configuredFont)
+    {
+        if (!string.IsNullOrWhiteSpace(configuredFont) &&
+            AvailableFonts.Contains(configuredFont, StringComparer.OrdinalIgnoreCase))
+        {
+            return configuredFont;
+        }
+
+        if (AvailableFonts.Contains(Defaults.FontFamily, StringComparer.OrdinalIgnoreCase))
+        {
+            return Defaults.FontFamily;
+        }
+
+        return AvailableFonts.FirstOrDefault() ?? Defaults.FontFamily;
+    }
+
+    private void ApplyTheme(Color foreground, Color background)
+    {
+        _editForegroundColor = foreground;
+        _editBackgroundColor = background;
+        this.RaisePropertyChanged(nameof(ForegroundColor));
+        this.RaisePropertyChanged(nameof(BackgroundColor));
+        RefreshThemeSelection();
+    }
+
+    private void RefreshThemeSelection()
+    {
+        IsBlackThemeSelected = _editForegroundColor.Equals(BlackThemeForeground) &&
+                               _editBackgroundColor.Equals(BlackThemeBackground);
+        IsWhiteThemeSelected = _editForegroundColor.Equals(WhiteThemeForeground) &&
+                               _editBackgroundColor.Equals(WhiteThemeBackground);
+    }
+
+    private void RefreshNavigationState()
+    {
+        this.RaisePropertyChanged(nameof(ShelfNavBackground));
+        this.RaisePropertyChanged(nameof(SettingsNavBackground));
+        this.RaisePropertyChanged(nameof(TutorialNavBackground));
+        this.RaisePropertyChanged(nameof(ShelfNavForeground));
+        this.RaisePropertyChanged(nameof(SettingsNavForeground));
+        this.RaisePropertyChanged(nameof(TutorialNavForeground));
     }
 
     private void SaveSettings()
@@ -250,6 +387,8 @@ public class ControlPanelViewModel : ViewModelBase
         {
             Books.Add(book);
         }
+
+        this.RaisePropertyChanged(nameof(HasBooks));
     }
 
     private async Task ImportBookAsync()
@@ -266,6 +405,7 @@ public class ControlPanelViewModel : ViewModelBase
             var bookInfo = await _libraryService.ImportBookAsync(filePath);
             Books.Insert(0, bookInfo);
             SelectedBook = bookInfo;
+            this.RaisePropertyChanged(nameof(HasBooks));
         }
         finally
         {
@@ -288,6 +428,7 @@ public class ControlPanelViewModel : ViewModelBase
             _libraryService.DeleteBook(SelectedBook.Id);
             Books.Remove(SelectedBook);
             SelectedBook = null;
+            this.RaisePropertyChanged(nameof(HasBooks));
         }
     }
 }

@@ -9,7 +9,7 @@ namespace TReader.Services;
 public interface INovelParser
 {
     /// <summary>
-    /// 解析TXT文件并返回小说对象
+    /// 解析 TXT 或 EPUB 文件并返回小说对象
     /// </summary>
     Task<Novel> ParseAsync(string filePath);
 

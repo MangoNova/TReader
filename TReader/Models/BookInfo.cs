@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 
 namespace TReader.Models;
 
@@ -18,7 +19,7 @@ public class BookInfo
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// 缓存的TXT文件路径（相对于应用数据目录）
+    /// 缓存的书籍文件名（TXT 或 EPUB，相对于应用数据目录）
     /// </summary>
     public string CachedFileName { get; set; } = string.Empty;
 
@@ -26,6 +27,11 @@ public class BookInfo
     /// 上次阅读的行号（从0开始）
     /// </summary>
     public int LastReadLine { get; set; }
+
+    /// <summary>
+    /// 书签列表
+    /// </summary>
+    public List<BookmarkInfo> Bookmarks { get; set; } = new();
 
     /// <summary>
     /// 添加时间

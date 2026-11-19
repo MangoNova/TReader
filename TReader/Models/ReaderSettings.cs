@@ -5,14 +5,26 @@ namespace TReader.Models;
 /// </summary>
 public static class Defaults
 {
-    public const double FontSize = 15;
-    public const string ForegroundColor = "#C8C8C8";
-    public const string BackgroundColor = "#00000057";
+    public const double FontSize = 16;
+
+    // Windows 上最适合中文长文本阅读的默认字体
+    public const string FontFamily = "Microsoft YaHei UI";
+
+    // 黑色主题：浅色文字 + 半透明深色背景
+    public const string BlackThemeForegroundColor = "#FFC8C8C8";
+    public const string BlackThemeBackgroundColor = "#57000000";
+
+    // 白色主题：深色文字 + 半透明浅色背景
+    public const string WhiteThemeForegroundColor = "#FF1F2937";
+    public const string WhiteThemeBackgroundColor = "#33FFFFFF";
+
+    public const string ForegroundColor = BlackThemeForegroundColor;
+    public const string BackgroundColor = BlackThemeBackgroundColor;
     public const double WindowWidth = 300;
     public const double WindowHeight = 400;
     public const double MinWindowWidth = 100;
     public const double MinWindowHeight = 20;
-    public const double LineHeight = 0.1;
+    public const double LineHeight = 1.6;
     public const double ParagraphSpacing = 0;
     public const double BackgroundOpacity = 0.6;
 }
@@ -75,5 +87,5 @@ public class ReaderSettings
     /// <summary>
     /// 全局字体
     /// </summary>
-    public string? FontFamily { get; set; }
+    public string? FontFamily { get; set; } = Defaults.FontFamily;
 }

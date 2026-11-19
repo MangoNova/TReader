@@ -34,9 +34,9 @@ public partial class ControlPanelWindow : Window
                 AllowMultiple = false,
                 FileTypeFilter = new[]
                 {
-                    new FilePickerFileType("文本文件")
+                    new FilePickerFileType("小说文件")
                     {
-                        Patterns = new[] { "*.txt" }
+                        Patterns = new[] { "*.txt", "*.epub" }
                     }
                 }
             });

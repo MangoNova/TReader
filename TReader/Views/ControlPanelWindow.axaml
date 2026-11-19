@@ -3,12 +3,12 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:vm="using:TReader.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="360" d:DesignHeight="400"
+        mc:Ignorable="d" d:DesignWidth="440" d:DesignHeight="620"
         x:Class="TReader.Views.ControlPanelWindow"
         x:DataType="vm:ControlPanelViewModel"
         Title="TReader"
-        Width="360"
-        Height="400"
+        Width="440"
+        Height="620"
         CanResize="False"
         WindowStartupLocation="CenterScreen"
         ExtendClientAreaToDecorationsHint="True"
@@ -22,269 +22,527 @@
         <Style Selector="ScrollViewer">
             <Setter Property="AllowAutoHide" Value="True"/>
         </Style>
-        
-        <!-- 列表项样式重写：极简行风格 -->
+
+        <!-- 标题栏按钮 -->
+        <Style Selector="Button.ChromeButton">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="34"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+        </Style>
+
+        <Style Selector="Button.ChromeButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E2E8F0"/>
+        </Style>
+
+        <Style Selector="Button.CloseButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FEE2E2"/>
+        </Style>
+
+        <!-- 列表项样式：浅色卡片 -->
         <Style Selector="ListBoxItem">
             <Setter Property="Padding" Value="0"/>
-            <Setter Property="Margin" Value="0,0,0,4"/>
+            <Setter Property="Margin" Value="0,0,0,12"/>
             <Setter Property="Background" Value="Transparent"/>
-            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="CornerRadius" Value="14"/>
             <Setter Property="Template">
                 <ControlTemplate>
-                    <Border Name="PART_Border" 
+                    <Border Name="PART_Border"
                             Background="{TemplateBinding Background}"
                             BorderBrush="{TemplateBinding BorderBrush}"
                             BorderThickness="{TemplateBinding BorderThickness}"
                             CornerRadius="{TemplateBinding CornerRadius}"
-                            Padding="12,10">
-                        <ContentPresenter Content="{TemplateBinding Content}" 
+                            Padding="14">
+                        <ContentPresenter Content="{TemplateBinding Content}"
                                           ContentTemplate="{TemplateBinding ContentTemplate}"/>
                         <Border.Transitions>
                             <Transitions>
-                                <BrushTransition Property="Background" Duration="0:0:0.2"/>
+                                <BrushTransition Property="Background" Duration="0:0:0.15"/>
                             </Transitions>
                         </Border.Transitions>
                     </Border>
                 </ControlTemplate>
             </Setter>
         </Style>
-        
+
         <Style Selector="ListBoxItem:pointerover /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#252525"/>
-        </Style>
-        
-        <Style Selector="ListBoxItem:selected /template/ Border#PART_Border">
-            <Setter Property="Background" Value="#303030"/>
-            <Setter Property="BorderBrush" Value="#27ae60"/>
-            <Setter Property="BorderThickness" Value="2,0,0,0"/> <!-- 左侧高亮条 -->
+            <Setter Property="Background" Value="#F8FAFC"/>
         </Style>
 
-        <!-- 通用按钮悬停效果 -->
-        <Style Selector="Button.IconBtn:pointerover ContentPresenter">
-            <Setter Property="Background" Value="#333"/>
+        <Style Selector="ListBoxItem:selected /template/ Border#PART_Border">
+            <Setter Property="Background" Value="#ECFDF5"/>
+            <Setter Property="BorderBrush" Value="#16A34A"/>
+            <Setter Property="BorderThickness" Value="1"/>
+        </Style>
+
+        <!-- 主按钮 -->
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#16A34A"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <Style Selector="Button.PrimaryButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#15803D"/>
+        </Style>
+
+        <!-- 次按钮 -->
+        <Style Selector="Button.SecondaryButton">
+            <Setter Property="Background" Value="#E2E8F0"/>
+            <Setter Property="Foreground" Value="#334155"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <Style Selector="Button.SecondaryButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#CBD5E1"/>
+        </Style>
+
+        <!-- 危险按钮 -->
+        <Style Selector="Button.DangerButton">
+            <Setter Property="Background" Value="#FEE2E2"/>
+            <Setter Property="Foreground" Value="#DC2626"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <Style Selector="Button.DangerButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FECACA"/>
+        </Style>
+
+        <!-- 表单控件 -->
+        <Style Selector="Slider">
+            <Setter Property="Foreground" Value="#16A34A"/>
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#0F172A"/>
+            <Setter Property="BorderBrush" Value="#CBD5E1"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+        </Style>
+
+        <Style Selector="ProgressBar">
+            <Setter Property="Foreground" Value="#16A34A"/>
         </Style>
     </Window.Styles>
 
-    <Border Background="#101010" CornerRadius="8" ClipToBounds="True" BorderBrush="#333" BorderThickness="1">
-        <Grid RowDefinitions="32,*">
-            
-            <!-- 1. 极简标题栏 -->
-            <Grid Grid.Row="0" Background="#161616" ColumnDefinitions="Auto,*,Auto" PointerPressed="OnTitleBarPointerPressed">
-                <StackPanel Orientation="Horizontal" Spacing="8" Margin="10,0" VerticalAlignment="Center">
-                    <Border Width="3" Height="12" Background="#27ae60" CornerRadius="2"/> <!-- Logo Accent -->
-                    <TextBlock Text="TReader" FontWeight="SemiBold" Foreground="#CCC" FontSize="12" VerticalAlignment="Center"/>
+    <Border CornerRadius="16" ClipToBounds="True" BorderBrush="#D8E0EA" BorderThickness="1">
+        <Border.Background>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                <GradientStop Color="#FFFFFF" Offset="0"/>
+                <GradientStop Color="#F3F6FB" Offset="1"/>
+            </LinearGradientBrush>
+        </Border.Background>
+
+        <Grid RowDefinitions="48,*">
+
+            <!-- 1. 标题栏 -->
+            <Grid Grid.Row="0" Background="#FFFFFF" ColumnDefinitions="Auto,*,Auto" PointerPressed="OnTitleBarPointerPressed">
+                <StackPanel Orientation="Horizontal" Spacing="12" Margin="16,0" VerticalAlignment="Center">
+                    <Border Width="30" Height="30" Background="#16A34A" CornerRadius="10">
+                        <TextBlock Text="T" FontWeight="Bold" Foreground="White" FontSize="16"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                    <StackPanel VerticalAlignment="Center" Spacing="1">
+                        <TextBlock Text="TReader" FontWeight="SemiBold" Foreground="#0F172A" FontSize="14"/>
+                        <TextBlock Text="透明阅读器" Foreground="#64748B" FontSize="10"/>
+                    </StackPanel>
                 </StackPanel>
-                
-                <StackPanel Grid.Column="2" Orientation="Horizontal">
-                    <Button Click="OnMinimizeClick" Background="Transparent" Width="36" Height="32" CornerRadius="0">
-                        <TextBlock Text="─" Foreground="#888" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+                <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="6,0">
+                    <Button Click="OnMinimizeClick" Classes="ChromeButton" ToolTip.Tip="最小化">
+                        <TextBlock Text="─" Foreground="#64748B" FontSize="12"/>
                     </Button>
-                    <Button Click="OnCloseClick" Background="Transparent" Width="36" Height="32" CornerRadius="0">
-                        <TextBlock Text="✕" Foreground="#888" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Button.Styles>
-                            <Style Selector="Button:pointerover /template/ ContentPresenter">
-                                <Setter Property="Background" Value="#C42B1C"/>
-                            </Style>
-                            <Style Selector="Button:pointerover TextBlock">
-                                <Setter Property="Foreground" Value="White"/>
-                            </Style>
-                        </Button.Styles>
+                    <Button Click="OnCloseClick" Classes="ChromeButton CloseButton" ToolTip.Tip="关闭到托盘">
+                        <TextBlock Text="✕" Foreground="#64748B" FontSize="12"/>
                     </Button>
                 </StackPanel>
             </Grid>
 
-            <!-- 2. 主体布局：侧边栏 + 内容 -->
-            <Grid Grid.Row="1" ColumnDefinitions="48,*">
-                
-                <!-- 侧边导航栏 (Slim) -->
-                <Border Grid.Column="0" Background="#161616">
-                    <StackPanel Spacing="8" Margin="0,10">
-                        <!-- 书架 Tab -->
+            <!-- 2. 主体布局 -->
+            <Grid Grid.Row="1" ColumnDefinitions="84,*">
+
+                <!-- 侧边导航栏 -->
+                <Border Grid.Column="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,1,0">
+                    <StackPanel Spacing="12" Margin="12,16">
+                        <!-- 书架 -->
                         <Button Command="{Binding SwitchToShelfCommand}"
-                                Classes="IconBtn"
+                                Background="{Binding ShelfNavBackground}"
                                 Padding="0"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
-                                Background="Transparent" Height="40" Width="40" CornerRadius="6"
+                                Height="62" CornerRadius="14"
                                 ToolTip.Tip="书架">
-                            <TextBlock Text="📚" FontSize="18" 
-                                       Opacity="{Binding !IsSettingsMode, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock Text="▤" FontSize="18" Foreground="{Binding ShelfNavForeground}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="书架" FontSize="10" Foreground="{Binding ShelfNavForeground}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
-                        <!-- 设置 Tab -->
+
+                        <!-- 设置 -->
                         <Button Command="{Binding SwitchToSettingsCommand}"
-                                Classes="IconBtn"
+                                Background="{Binding SettingsNavBackground}"
                                 Padding="0"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
-                                Background="Transparent" Height="40" Width="40" CornerRadius="6"
+                                Height="62" CornerRadius="14"
                                 ToolTip.Tip="设置">
-                            <TextBlock Text="⚙️" FontSize="18" 
-                                       Opacity="{Binding IsSettingsMode, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock Text="⚙" FontSize="18" Foreground="{Binding SettingsNavForeground}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="设置" FontSize="10" Foreground="{Binding SettingsNavForeground}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
-                        <!-- 教程 Tab -->
+
+                        <!-- 教程 -->
                         <Button Command="{Binding SwitchToTutorialCommand}"
-                                Classes="IconBtn"
+                                Background="{Binding TutorialNavBackground}"
                                 Padding="0"
-                                HorizontalAlignment="Center"
-                                VerticalAlignment="Center"
+                                HorizontalAlignment="Stretch"
                                 HorizontalContentAlignment="Center"
                                 VerticalContentAlignment="Center"
-                                Background="Transparent" Height="40" Width="40" CornerRadius="6"
+                                Height="62" CornerRadius="14"
                                 ToolTip.Tip="教程">
-                            <TextBlock Text="📖" FontSize="18" 
-                                       Opacity="{Binding IsTutorialMode, Converter={x:Static ObjectConverters.IsNull}}"/>
+                            <StackPanel Spacing="4" HorizontalAlignment="Center">
+                                <TextBlock Text="?" FontSize="18" FontWeight="Bold" Foreground="{Binding TutorialNavForeground}"
+                                           HorizontalAlignment="Center"/>
+                                <TextBlock Text="教程" FontSize="10" Foreground="{Binding TutorialNavForeground}"
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
                         </Button>
                     </StackPanel>
                 </Border>
 
                 <!-- 内容区域 -->
-                <Panel Grid.Column="1">
-                    
-                    <!-- View A: 书架 (简约列表) -->
-                    <Grid RowDefinitions="Auto,*,Auto" Margin="16,16,16,0" IsVisible="{Binding !IsSettingsMode}">
+                <Panel Grid.Column="1" Background="#F7F9FC">
+
+                    <!-- View A: 书架 -->
+                    <Grid RowDefinitions="Auto,*,Auto" Margin="22,22,22,22">
                         <Grid.IsVisible>
                             <MultiBinding Converter="{x:Static BoolConverters.And}">
                                 <Binding Path="!IsSettingsMode"/>
                                 <Binding Path="!IsTutorialMode"/>
                             </MultiBinding>
                         </Grid.IsVisible>
+
                         <!-- Header -->
-                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,10">
-                            <TextBlock Text="我的书库" FontSize="16" FontWeight="Bold" Foreground="#EEE"/>
-                            <Button Grid.Column="1" Command="{Binding ImportBookCommand}"
-                                    Background="Transparent" BorderBrush="#333" BorderThickness="1" 
-                                    CornerRadius="4" Padding="8,4" Foreground="#27ae60">
-                                <StackPanel Orientation="Horizontal" Spacing="4">
-                                    <TextBlock Text="+" FontWeight="Bold"/>
-                                    <TextBlock Text="导入"/>
+                        <Grid Grid.Row="0" ColumnDefinitions="*,Auto" Margin="0,0,0,20">
+                            <StackPanel VerticalAlignment="Center" Spacing="4">
+                                <TextBlock Text="我的书库" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+                                <TextBlock Text="导入小说，随时开始阅读" Foreground="#64748B" FontSize="12"/>
+                            </StackPanel>
+
+                            <Button Grid.Column="1"
+                                    Command="{Binding ImportBookCommand}"
+                                    Classes="PrimaryButton"
+                                    Padding="16,10"
+                                    VerticalAlignment="Center">
+                                <StackPanel Orientation="Horizontal" Spacing="6">
+                                    <TextBlock Text="＋" FontWeight="Bold"/>
+                                    <TextBlock Text="导入书籍"/>
                                 </StackPanel>
                             </Button>
                         </Grid>
 
                         <!-- List -->
-                        <ListBox Grid.Row="1" 
-                                 ItemsSource="{Binding Books}" 
-                                 SelectedItem="{Binding SelectedBook}"
-                                 Background="Transparent"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                            <ListBox.ItemTemplate>
-                                <DataTemplate>
-                                    <Grid ColumnDefinitions="Auto,*">
-                                        <!-- 书籍图标 (小) -->
-                                        <Border Grid.Column="0" Width="24" Height="32" Background="#222" CornerRadius="2" Margin="0,0,12,0">
-                                            <TextBlock Text="📖" FontSize="12" HorizontalAlignment="Center" VerticalAlignment="Center" Opacity="0.5"/>
-                                        </Border>
-                                        <!-- 书名 -->
-                                        <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#DDD" FontSize="13" 
-                                                   VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
-                                    </Grid>
-                                </DataTemplate>
-                            </ListBox.ItemTemplate>
-                        </ListBox>
-                        
-                        <!-- 底部操作栏 (仅选中时显示) -->
-                        <Border Grid.Row="2" Margin="-16,10,-16,0" Padding="16" Background="#1A1A1A" 
+                        <Grid Grid.Row="1">
+                            <ListBox ItemsSource="{Binding Books}"
+                                     SelectedItem="{Binding SelectedBook}"
+                                     Background="Transparent"
+                                     BorderThickness="0"
+                                     ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid ColumnDefinitions="Auto,*,Auto">
+                                            <Border Width="42" Height="56" CornerRadius="10">
+                                                <Border.Background>
+                                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                        <GradientStop Color="#22C55E" Offset="0"/>
+                                                        <GradientStop Color="#0F766E" Offset="1"/>
+                                                    </LinearGradientBrush>
+                                                </Border.Background>
+                                                <TextBlock Text="书"
+                                                           FontWeight="Bold"
+                                                           Foreground="White"
+                                                           FontSize="18"
+                                                           HorizontalAlignment="Center"
+                                                           VerticalAlignment="Center"/>
+                                            </Border>
+
+                                            <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center" Spacing="5">
+                                                <TextBlock Text="{Binding Title}"
+                                                           Foreground="#0F172A"
+                                                           FontSize="15"
+                                                           FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis"/>
+                                                <TextBlock Text="点击下方开始阅读"
+                                                           Foreground="#94A3B8"
+                                                           FontSize="11"/>
+                                            </StackPanel>
+
+                                            <TextBlock Grid.Column="2"
+                                                       Text="›"
+                                                       FontSize="24"
+                                                       Foreground="#94A3B8"
+                                                       VerticalAlignment="Center"/>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+
+                            <!-- 空状态 -->
+                            <Border Background="White"
+                                    BorderBrush="#E2E8F0"
+                                    BorderThickness="1"
+                                    CornerRadius="16"
+                                    IsVisible="{Binding !HasBooks}">
+                                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
+                                    <Border Width="58" Height="58" Background="#DCFCE7" CornerRadius="20">
+                                        <TextBlock Text="＋"
+                                                   FontSize="28"
+                                                   FontWeight="Bold"
+                                                   Foreground="#16A34A"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"/>
+                                    </Border>
+                                    <TextBlock Text="书架还是空的"
+                                               Foreground="#0F172A"
+                                               FontSize="16"
+                                               FontWeight="SemiBold"
+                                               HorizontalAlignment="Center"/>
+                                    <TextBlock Text="导入 TXT 或 EPUB，开始阅读"
+                                               Foreground="#64748B"
+                                               FontSize="12"
+                                               HorizontalAlignment="Center"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <!-- 底部操作栏 -->
+                        <Border Grid.Row="2"
+                                Margin="-22,16,-22,-22"
+                                Padding="22,16"
+                                Background="White"
+                                BorderBrush="#E2E8F0"
+                                BorderThickness="0,1,0,0"
                                 IsVisible="{Binding SelectedBook, Converter={x:Static ObjectConverters.IsNotNull}}">
-                            <Grid ColumnDefinitions="*,*">
-                                <Button Grid.Column="0" Command="{Binding DeleteBookCommand}" 
-                                        Content="删除" Foreground="#666" Background="Transparent" 
-                                        HorizontalAlignment="Left" FontSize="12"/>
-                                
-                                <Button Grid.Column="1" Command="{Binding OpenBookCommand}" 
-                                        Content="开始阅读" Background="#27ae60" Foreground="White" 
-                                        CornerRadius="4" HorizontalAlignment="Right" Padding="20,6" FontWeight="Bold"/>
+                            <Grid ColumnDefinitions="Auto,*">
+                                <Button Command="{Binding DeleteBookCommand}"
+                                        Classes="DangerButton"
+                                        Content="删除"
+                                        Padding="18,10"
+                                        HorizontalAlignment="Left"/>
+
+                                <Button Grid.Column="1"
+                                        Command="{Binding OpenBookCommand}"
+                                        Classes="PrimaryButton"
+                                        Padding="24,11"
+                                        HorizontalAlignment="Right">
+                                    <StackPanel Orientation="Horizontal" Spacing="8">
+                                        <TextBlock Text="开始阅读"/>
+                                        <TextBlock Text="→"/>
+                                    </StackPanel>
+                                </Button>
                             </Grid>
                         </Border>
                     </Grid>
 
-                    <!-- View B: 设置 (垂直流式布局) -->
-                    <Grid RowDefinitions="Auto,*,Auto" Margin="16,16,16,16" IsVisible="{Binding IsSettingsMode}">
-                        <TextBlock Grid.Row="0" Text="偏好设置" FontSize="16" FontWeight="Bold" Foreground="#EEE" Margin="0,0,0,15"/>
-                        
+                    <!-- View B: 设置 -->
+                    <Grid RowDefinitions="Auto,*,Auto" Margin="22,22,22,22" IsVisible="{Binding IsSettingsMode}">
+                        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,20">
+                            <TextBlock Text="偏好设置" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="调整阅读体验与界面外观" Foreground="#64748B" FontSize="12"/>
+                        </StackPanel>
+
                         <ScrollViewer Grid.Row="1" Padding="0,0,4,0">
-                            <StackPanel Spacing="20">
-                                
+                            <StackPanel Spacing="24">
+
                                 <!-- Typography -->
-                                <StackPanel Spacing="12">
-                                    <TextBlock Text="排版" FontSize="11" FontWeight="Bold" Foreground="#555"/>
-                                    
-                                    <!-- 紧凑的设置项 -->
-                                    <Grid ColumnDefinitions="*,40" RowDefinitions="Auto,Auto">
-                                        <TextBlock Text="字号" Foreground="#AAA" FontSize="12"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding FontSize, StringFormat='{}{0:0}'}" Foreground="#27ae60" HorizontalAlignment="Right"/>
-                                        <Slider Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding FontSize}" Minimum="10" Maximum="30" Margin="0,4,0,0"/>
+                                <StackPanel Spacing="14">
+                                    <TextBlock Text="排版" FontSize="12" FontWeight="Bold" Foreground="#16A34A"/>
+
+                                    <Grid ColumnDefinitions="*,52" RowDefinitions="Auto,Auto">
+                                        <TextBlock Text="字号" Foreground="#475569" FontSize="12"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding FontSize, StringFormat='{}{0:0}'}" Foreground="#16A34A" HorizontalAlignment="Right"/>
+                                        <Slider Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding FontSize}" Minimum="10" Maximum="30" Margin="0,6,0,0"/>
                                     </Grid>
 
-                                    <Grid ColumnDefinitions="*,40" RowDefinitions="Auto,Auto">
-                                        <TextBlock Text="行距" Foreground="#AAA" FontSize="12"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding LineHeight, StringFormat='{}{0:0.0}'}" Foreground="#27ae60" HorizontalAlignment="Right"/>
-                                        <Slider Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding LineHeight}" Minimum="0.1" Maximum="2.5" TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="0,4,0,0"/>
+                                    <Grid ColumnDefinitions="*,52" RowDefinitions="Auto,Auto">
+                                        <TextBlock Text="行距" Foreground="#475569" FontSize="12"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding LineHeight, StringFormat='{}{0:0.0}'}" Foreground="#16A34A" HorizontalAlignment="Right"/>
+                                        <Slider Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding LineHeight}" Minimum="0.1" Maximum="2.5" TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="0,6,0,0"/>
                                     </Grid>
-                                    
-                                    <Grid ColumnDefinitions="*,40" RowDefinitions="Auto,Auto">
-                                        <TextBlock Text="段距" Foreground="#AAA" FontSize="12"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding ParagraphSpacing, StringFormat='{}{0:0.0}'}" Foreground="#27ae60" HorizontalAlignment="Right"/>
-                                        <Slider Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding ParagraphSpacing}" Minimum="0" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="0,4,0,0"/>
+
+                                    <Grid ColumnDefinitions="*,52" RowDefinitions="Auto,Auto">
+                                        <TextBlock Text="段距" Foreground="#475569" FontSize="12"/>
+                                        <TextBlock Grid.Column="1" Text="{Binding ParagraphSpacing, StringFormat='{}{0:0.0}'}" Foreground="#16A34A" HorizontalAlignment="Right"/>
+                                        <Slider Grid.Row="1" Grid.ColumnSpan="2" Value="{Binding ParagraphSpacing}" Minimum="0" Maximum="3" TickFrequency="0.1" IsSnapToTickEnabled="True" Margin="0,6,0,0"/>
                                     </Grid>
-                                    
-                                    <StackPanel Spacing="6">
-                                        <TextBlock Text="字体" Foreground="#AAA" FontSize="12"/>
-                                        <ComboBox ItemsSource="{Binding AvailableFonts}" SelectedItem="{Binding FontFamily}" 
-                                                  HorizontalAlignment="Stretch" Background="#1E1E1E" BorderThickness="0" CornerRadius="4" PlaceholderText="Default"/>
+
+                                    <StackPanel Spacing="8">
+                                        <TextBlock Text="字体（推荐：微软雅黑 UI）" Foreground="#475569" FontSize="12"/>
+                                        <ComboBox ItemsSource="{Binding AvailableFonts}"
+                                                  SelectedItem="{Binding FontFamily}"
+                                                  HorizontalAlignment="Stretch"
+                                                  PlaceholderText="Default"/>
                                     </StackPanel>
                                 </StackPanel>
 
                                 <!-- Appearance -->
-                                <StackPanel Spacing="12">
-                                    <TextBlock Text="外观" FontSize="11" FontWeight="Bold" Foreground="#555"/>
-                                    
-                                    <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto">
-                                        <TextBlock Grid.Column="0" Text="文字颜色" Foreground="#AAA" FontSize="12" Margin="0,0,0,6"/>
-                                        <ColorPicker Grid.Row="1" Grid.Column="0" Color="{Binding ForegroundColor}" />
-                                        
-                                        <TextBlock Grid.Column="1" Text="背景颜色" Foreground="#AAA" FontSize="12" Margin="10,0,0,6"/>
-                                        <ColorPicker Grid.Row="1" Grid.Column="1" Color="{Binding BackgroundColor}" Margin="10,0,0,0"/>
+                                <StackPanel Spacing="14">
+                                    <TextBlock Text="外观" FontSize="12" FontWeight="Bold" Foreground="#16A34A"/>
+                                    <TextBlock Text="主题" Foreground="#475569" FontSize="12"/>
+
+                                    <Grid ColumnDefinitions="*,*">
+                                        <Button Command="{Binding ApplyBlackThemeCommand}"
+                                                Padding="0" BorderThickness="0" Background="Transparent"
+                                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                            <Border Background="{Binding BlackPreviewBackground}"
+                                                    CornerRadius="12" Padding="16"
+                                                    BorderBrush="{Binding BlackThemeCardBorder}" BorderThickness="2">
+                                                <StackPanel Spacing="5">
+                                                    <TextBlock Text="黑色" Foreground="{Binding BlackPreviewForeground}"
+                                                               FontSize="14" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="深色背景，浅色文字" Foreground="{Binding BlackPreviewForeground}"
+                                                               Opacity="0.75" FontSize="11"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Button>
+
+                                        <Button Grid.Column="1" Margin="12,0,0,0"
+                                                Command="{Binding ApplyWhiteThemeCommand}"
+                                                Padding="0" BorderThickness="0" Background="Transparent"
+                                                HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch">
+                                            <Border Background="{Binding WhitePreviewBackground}"
+                                                    CornerRadius="12" Padding="16"
+                                                    BorderBrush="{Binding WhiteThemeCardBorder}" BorderThickness="2">
+                                                <StackPanel Spacing="5">
+                                                    <TextBlock Text="白色" Foreground="{Binding WhitePreviewForeground}"
+                                                               FontSize="14" FontWeight="SemiBold"/>
+                                                    <TextBlock Text="浅色背景，深色文字" Foreground="{Binding WhitePreviewForeground}"
+                                                               Opacity="0.75" FontSize="11"/>
+                                                </StackPanel>
+                                            </Border>
+                                        </Button>
                                     </Grid>
+
+                                    <Expander Header="自定义颜色（高级）" Foreground="#475569">
+                                        <Grid ColumnDefinitions="*,*" RowDefinitions="Auto,Auto" Margin="0,10,0,0">
+                                            <TextBlock Grid.Column="0" Text="文字颜色" Foreground="#475569" FontSize="12" Margin="0,0,0,6"/>
+                                            <ColorPicker Grid.Row="1" Grid.Column="0" Color="{Binding ForegroundColor}" />
+
+                                            <TextBlock Grid.Column="1" Text="背景颜色" Foreground="#475569" FontSize="12" Margin="10,0,0,6"/>
+                                            <ColorPicker Grid.Row="1" Grid.Column="1" Color="{Binding BackgroundColor}" Margin="10,0,0,0"/>
+                                        </Grid>
+                                    </Expander>
                                 </StackPanel>
 
                             </StackPanel>
                         </ScrollViewer>
 
                         <!-- Actions -->
-                        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,10,0,0">
-                             <Button Grid.Column="0" Command="{Binding CancelSettingsCommand}" 
-                                     Content="取消" Background="Transparent" Foreground="#666" HorizontalAlignment="Left"/>
-                             <Button Grid.Column="1" Command="{Binding ResetToDefaultCommand}" 
-                                     Content="恢复默认" Background="Transparent" Foreground="#e74c3c" HorizontalAlignment="Center"/>
-                             <Button Grid.Column="2" Command="{Binding SaveSettingsCommand}" 
-                                     Content="保存" Background="#27ae60" Foreground="White" FontWeight="Bold" 
-                                     CornerRadius="4" HorizontalAlignment="Right" Padding="20,6"/>
+                        <Grid Grid.Row="2" ColumnDefinitions="Auto,*,Auto" Margin="0,16,0,0">
+                            <Button Grid.Column="0" Command="{Binding CancelSettingsCommand}"
+                                    Content="取消" Classes="SecondaryButton" Padding="18,10" HorizontalAlignment="Left"/>
+                            <Button Grid.Column="1" Command="{Binding ResetToDefaultCommand}"
+                                    Content="恢复默认" Classes="DangerButton" Background="Transparent" HorizontalAlignment="Center"/>
+                            <Button Grid.Column="2" Command="{Binding SaveSettingsCommand}"
+                                    Content="保存" Classes="PrimaryButton" Padding="24,11" HorizontalAlignment="Right"/>
                         </Grid>
                     </Grid>
-                    
+
                     <!-- View C: 教程 -->
-                    <Grid RowDefinitions="Auto,*" Margin="16,16,16,16" IsVisible="{Binding IsTutorialMode}">
-                        <TextBlock Grid.Row="0" Text="使用教程" FontSize="16" FontWeight="Bold" Foreground="#EEE" Margin="0,0,0,15"/>
-                        
+                    <Grid RowDefinitions="Auto,*" Margin="22,22,22,22" IsVisible="{Binding IsTutorialMode}">
+                        <StackPanel Grid.Row="0" Spacing="4" Margin="0,0,0,20">
+                            <TextBlock Text="使用教程" FontSize="24" FontWeight="Bold" Foreground="#0F172A"/>
+                            <TextBlock Text="快速了解 TReader 的使用方法" Foreground="#64748B" FontSize="12"/>
+                        </StackPanel>
+
                         <ScrollViewer Grid.Row="1" Padding="0,0,4,0">
                             <StackPanel Spacing="12">
-                                <!-- 在这里添加教程内容 -->
-                                <TextBlock Text="1.托盘内右击图标打开控制面板" Foreground="white" FontSize="13" TextWrapping="Wrap"/>
-                                <TextBlock Text="2.点击开始阅读后，进入阅读窗口" Foreground="white" FontSize="13" TextWrapping="Wrap"/>
-                                <TextBlock Text="3.鼠标移到阅读窗口之外，阅读界面会自动隐藏" Foreground="white" FontSize="13" TextWrapping="Wrap"/>
-                                <TextBlock Text="4.当焦点移到其他地方后，阅读窗口会彻底隐藏，要想重新显示，需要按住ctrl，然后双击阅读界面所在区域，即可重新显示阅读窗口" Foreground="white" FontSize="13" TextWrapping="Wrap"/>
-                                <TextBlock Text="5.如果找不到阅读界面在哪了，右键托盘图标点击刷新阅读窗口，即可把阅读窗口重新显示在屏幕正中央" Foreground="white" FontSize="13" TextWrapping="Wrap"/>
+                                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="14" Padding="16">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Width="28" Height="28" Background="#DCFCE7" CornerRadius="9" Margin="0,0,12,0">
+                                            <TextBlock Text="1" FontWeight="Bold" Foreground="#16A34A"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="5">
+                                            <TextBlock Text="打开控制面板" Foreground="#0F172A" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="右键系统托盘图标，即可打开控制面板。" Foreground="#64748B" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="14" Padding="16">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Width="28" Height="28" Background="#DCFCE7" CornerRadius="9" Margin="0,0,12,0">
+                                            <TextBlock Text="2" FontWeight="Bold" Foreground="#16A34A"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="5">
+                                            <TextBlock Text="开始阅读" Foreground="#0F172A" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="在书架中选择书籍，点击“开始阅读”进入透明阅读窗口。" Foreground="#64748B" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="14" Padding="16">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Width="28" Height="28" Background="#DCFCE7" CornerRadius="9" Margin="0,0,12,0">
+                                            <TextBlock Text="3" FontWeight="Bold" Foreground="#16A34A"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="5">
+                                            <TextBlock Text="自动隐藏" Foreground="#0F172A" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="鼠标移出阅读窗口后，界面会延迟约 1.2 秒再隐藏。" Foreground="#64748B" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="14" Padding="16">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Width="28" Height="28" Background="#DCFCE7" CornerRadius="9" Margin="0,0,12,0">
+                                            <TextBlock Text="4" FontWeight="Bold" Foreground="#16A34A"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="5">
+                                            <TextBlock Text="召回与缩放" Foreground="#0F172A" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="按住 Ctrl 双击原位置召回窗口；拖动边缘或角落可调整大小。" Foreground="#64748B" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="14" Padding="16">
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Border Width="28" Height="28" Background="#DCFCE7" CornerRadius="9" Margin="0,0,12,0">
+                                            <TextBlock Text="5" FontWeight="Bold" Foreground="#16A34A"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Spacing="5">
+                                            <TextBlock Text="找不到窗口？" Foreground="#0F172A" FontSize="13" FontWeight="SemiBold"/>
+                                            <TextBlock Text="右键托盘图标，选择“刷新阅读窗口”，窗口会回到屏幕中央。" Foreground="#64748B" FontSize="12" TextWrapping="Wrap"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
                             </StackPanel>
                         </ScrollViewer>
                     </Grid>
-                    
+
                     <!-- Loading Mask -->
-                    <Border Grid.RowSpan="2" Grid.ColumnSpan="2" Background="#AA000000" IsVisible="{Binding IsLoading}" CornerRadius="8">
-                         <ProgressBar IsIndeterminate="True" HorizontalAlignment="Center" VerticalAlignment="Center" Width="60"/>
+                    <Border Background="#CCFFFFFF" IsVisible="{Binding IsLoading}" CornerRadius="16">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12">
+                            <ProgressBar IsIndeterminate="True" Width="72"/>
+                            <TextBlock Text="正在处理..." Foreground="#64748B" FontSize="12" HorizontalAlignment="Center"/>
+                        </StackPanel>
                     </Border>
                 </Panel>
             </Grid>
