@@ -185,8 +185,14 @@ public partial class ReaderView : UserControl
                 if (targetLine != null && targetLine.LineNumber > 0)
                 {
                     var snappedY = textView.GetVisualTopByDocumentLine(targetLine.LineNumber);
-                    // 吸附后仍需确实滚动了，避免落点太近导致"没反应"
-                    if (Math.Abs(snappedY - currentY) >= 0.5)
+                    // 只有当吸附位移小于一屏、且落点相对当前位移方向正确时才吸附。
+                    // WordWrap 下长段落会折成高于一屏的行，若仍吸到其行首：
+                    // 向前翻会退回行首、在两页间振荡；向后翻会一次跳回多屏。
+                    var snapDistance = Math.Abs(snappedY - targetY);
+                    var movedEnough = forward
+                        ? snappedY >= currentY + 0.5
+                        : snappedY <= currentY - 0.5;
+                    if (snapDistance < viewportHeight && movedEnough)
                     {
                         targetY = Math.Clamp(snappedY, 0, maxOffset);
                     }
