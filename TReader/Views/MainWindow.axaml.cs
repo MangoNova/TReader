@@ -155,6 +155,9 @@ public partial class MainWindow : Window
         var container = this.FindControl<Grid>("ContentContainer");
         if (container != null) container.Opacity = 1;
         Topmost = true;
+
+        // 子窗口关闭后把键盘焦点还给阅读内容，保证翻页键继续可用
+        this.FindControl<TReader.Views.ReaderView>("ReaderViewControl")?.FocusContent();
     }
 
     private void OnPointerActivity(object? sender, Avalonia.Input.PointerEventArgs e)

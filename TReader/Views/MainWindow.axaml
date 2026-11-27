@@ -27,7 +27,7 @@
     <!-- 阅读界面容器，用于控制透明度 -->
     <Grid x:Name="ContentContainer" Opacity="1">
         
-        <views:ReaderView />
+        <views:ReaderView x:Name="ReaderViewControl" />
 
         <!-- 八方向缩放区域 -->
         <Border Tag="NorthWest" Width="10" Height="10" HorizontalAlignment="Left" VerticalAlignment="Top"

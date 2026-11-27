@@ -11,6 +11,7 @@ namespace TReader.Views;
 public partial class ReaderView : UserControl
 {
     private TextEditor? _textEditor;
+    private bool _windowKeyRegistered;
 
     public ReaderView()
     {
@@ -32,6 +33,38 @@ public partial class ReaderView : UserControl
         {
             _textEditor.TextArea.TextView.ScrollOffsetChanged += OnScrollOffsetChanged;
         }
+    }
+
+    /// <summary>
+    /// 让阅读内容获得键盘焦点，保证按键能被处理。
+    /// </summary>
+    public void FocusContent()
+    {
+        _textEditor?.Focus();
+    }
+
+    protected override void OnAttachedToVisualTree(Avalonia.VisualTreeAttachmentEventArgs e)
+    {
+        base.OnAttachedToVisualTree(e);
+
+        // 在 Window 级别注册按键处理（Window 永远在事件路由链上），
+        // 确保即使 TextEditor 没有键盘焦点，翻页键也能响应。
+        if (!_windowKeyRegistered)
+        {
+            var window = TopLevel.GetTopLevel(this) as Window;
+            if (window != null)
+            {
+                window.AddHandler(
+                    Avalonia.Input.InputElement.KeyDownEvent,
+                    OnPreviewKeyDown,
+                    RoutingStrategies.Tunnel,
+                    true); // handledEventsToo：即使已被处理也触发
+                _windowKeyRegistered = true;
+            }
+        }
+
+        // 主动给阅读内容设焦点
+        Dispatcher.UIThread.Post(() => _textEditor?.Focus(), DispatcherPriority.Input);
     }
 
     // 标志位：正在初始化滚动位置，暂不保存进度
@@ -183,6 +216,9 @@ public partial class ReaderView : UserControl
             {
                 window.BeginMoveDrag(e);
                 e.Handled = true; // 标记已处理，不再向下传递给 TextEditor
+
+                // 拖拽会抢走焦点，拖完后把焦点还给阅读内容，保证键盘可用
+                Dispatcher.UIThread.Post(() => _textEditor?.Focus(), DispatcherPriority.Input);
             }
         }
     }
