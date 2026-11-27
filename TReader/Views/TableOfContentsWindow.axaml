@@ -1,39 +1,39 @@
 <Window xmlns="https://github.com/avaloniaui"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
-        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:vm="using:TReader.ViewModels"
-        mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="500"
-        x:Class="TReader.Views.TableOfContentsWindow"
-        x:DataType="vm:TableOfContentsViewModel"
-        Title="目录"
-        Icon="avares://TReader/Images/TReader.ico"
-        Width="300"
-        Height="500"
-        CanResize="False"
-        WindowStartupLocation="CenterOwner"
-        SystemDecorations="None"
-        Background="Transparent"
-        Topmost="True"
-        TransparencyLevelHint="AcrylicBlur"
-        ExtendClientAreaToDecorationsHint="True">
+       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+       xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+       xmlns:vm="using:TReader.ViewModels"
+       mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="500"
+       x:Class="TReader.Views.TableOfContentsWindow"
+       x:DataType="vm:TableOfContentsViewModel"
+       Title="目录"
+       Icon="avares://TReader/Images/TReader.ico"
+       Width="300"
+       Height="500"
+       CanResize="False"
+       WindowStartupLocation="CenterOwner"
+       SystemDecorations="None"
+       Background="Transparent"
+       Topmost="True"
+       TransparencyLevelHint="AcrylicBlur"
+       ExtendClientAreaToDecorationsHint="True">
 
     <Design.DataContext>
         <vm:TableOfContentsViewModel/>
     </Design.DataContext>
 
-    <!-- Main Container with Shadow and Background -->
-    <Border Background="#1a1a2e" 
-            CornerRadius="12" 
+    <!-- Main Container -->
+    <Border Background="#1E1B2E"
+            CornerRadius="12"
             Padding="16"
-            BoxShadow="0 0 20 0 #66000000">
-        
+            BoxShadow="0 0 24 0 #66000000">
+
         <Grid RowDefinitions="Auto,Auto,*,Auto">
             <!-- Header (Draggable) -->
             <Grid Grid.Row="0" Margin="0,0,0,12" Background="Transparent" PointerPressed="OnHeaderPointerPressed">
-                <TextBlock Text="目录" FontSize="18" FontWeight="Bold" Foreground="#eee" VerticalAlignment="Center"/>
+                <TextBlock Text="目录" FontSize="18" FontWeight="Bold" Foreground="#E2E8F0" VerticalAlignment="Center"/>
                 <Button Command="{Binding CloseCommand}" HorizontalAlignment="Right" Background="Transparent" Padding="4">
-                    <TextBlock Text="✕" Foreground="#666"/>
+                    <TextBlock Text="✕" Foreground="#8B8FA3"/>
                 </Button>
             </Grid>
 
@@ -41,10 +41,10 @@
             <TextBox Grid.Row="1"
                      Text="{Binding SearchText}"
                      Watermark="搜索..."
-                     Background="#252538"
-                     Foreground="#eee"
+                     Background="#2A2650"
+                     Foreground="#E2E8F0"
                      BorderThickness="0"
-                     CornerRadius="6"
+                     CornerRadius="8"
                      Padding="8,6"
                      FontSize="12"
                      Margin="0,0,0,12"/>
@@ -59,16 +59,22 @@
                      DoubleTapped="OnListBoxDoubleTapped"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                 <ListBox.Styles>
-                     <Style Selector="ListBoxItem">
-                        <Setter Property="Padding" Value="4,2"/>
-                        <Setter Property="CornerRadius" Value="4"/>
-                     </Style>
+                    <Style Selector="ListBoxItem">
+                        <Setter Property="Padding" Value="6,2"/>
+                        <Setter Property="CornerRadius" Value="8"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:pointerover /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#2A2650"/>
+                    </Style>
+                    <Style Selector="ListBoxItem:selected /template/ ContentPresenter">
+                        <Setter Property="Background" Value="#6366F1"/>
+                    </Style>
                 </ListBox.Styles>
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <Grid ColumnDefinitions="30,*">
-                            <TextBlock Text="{Binding Index}" Foreground="#666" FontSize="10" VerticalAlignment="Center"/>
-                            <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#ddd" FontSize="12" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock Text="{Binding Index}" Foreground="#8B8FA3" FontSize="10" VerticalAlignment="Center"/>
+                            <TextBlock Grid.Column="1" Text="{Binding Title}" Foreground="#E2E8F0" FontSize="12" TextTrimming="CharacterEllipsis"/>
                         </Grid>
                     </DataTemplate>
                 </ListBox.ItemTemplate>
@@ -76,15 +82,15 @@
 
             <!-- Footer Buttons -->
             <Grid Grid.Row="3" Margin="0,12,0,0" ColumnDefinitions="*,*">
-                <Button Grid.Column="1" 
+                <Button Grid.Column="1"
                         Content="跳转"
                         Command="{Binding SelectChapterCommand}"
-                        Background="#22b573"
+                        Background="#6366F1"
                         Foreground="White"
                         HorizontalAlignment="Stretch"
                         HorizontalContentAlignment="Center"
                         Padding="0,8"
-                        CornerRadius="6"
+                        CornerRadius="8"
                         IsEnabled="{Binding SelectedChapter, Converter={x:Static ObjectConverters.IsNotNull}}"/>
             </Grid>
         </Grid>

@@ -33,6 +33,7 @@ namespace TReader
 
         private TrayIcon? _trayIcon;
         private NativeMenuItem? _refreshReaderMenuItem;
+        private Avalonia.Threading.DispatcherTimer? _windowBoundsSaveTimer;
 
         public override void Initialize()
         {
@@ -202,6 +203,8 @@ namespace TReader
 
         private void OnExitClick(object? sender, EventArgs e)
         {
+            SaveReaderWindowBounds();
+            TReader.Services.WindowHelper.SetCursorVisible(true);
             _isExiting = true;
             if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
             {
@@ -247,11 +250,16 @@ namespace TReader
                 // 阅读窗口关闭时返回书架
                 _readerWindow.Closing += (s, e) =>
                 {
+                    SaveReaderWindowBounds();
                     if (_isExiting) return;
 
                     e.Cancel = true; // 阻止真正关闭
                     OnBackToShelf();
                 };
+
+                // 窗口缩放/移动后自动保存位置和大小
+                _readerWindow.Resized += (s, e) => QueueSaveReaderWindowBounds();
+                _readerWindow.PositionChanged += (s, e) => QueueSaveReaderWindowBounds();
             }
 
             // 从设置加载窗口大小
@@ -310,17 +318,45 @@ namespace TReader
             if (_refreshReaderMenuItem != null) _refreshReaderMenuItem.IsEnabled = true;
         }
 
-        private void OnBackToShelf()
+        private void QueueSaveReaderWindowBounds()
         {
-            if (_readerWindow == null || _controlPanelWindow == null || _readerViewModel == null) return;
+            if (_readerWindow == null) return;
 
-            // 保存阅读窗口大小和位置到设置
+            if (_windowBoundsSaveTimer == null)
+            {
+                _windowBoundsSaveTimer = new Avalonia.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(400)
+                };
+                _windowBoundsSaveTimer.Tick += (s, e) =>
+                {
+                    _windowBoundsSaveTimer?.Stop();
+                    SaveReaderWindowBounds();
+                };
+            }
+
+            _windowBoundsSaveTimer.Stop();
+            _windowBoundsSaveTimer.Start();
+        }
+
+        private void SaveReaderWindowBounds()
+        {
+            if (_readerWindow == null) return;
+
             var settings = _settingsService.Load();
             settings.WindowWidth = _readerWindow.Width;
             settings.WindowHeight = _readerWindow.Height;
             settings.WindowX = _readerWindow.Position.X;
             settings.WindowY = _readerWindow.Position.Y;
             _settingsService.Save(settings);
+        }
+
+        private void OnBackToShelf()
+        {
+            if (_readerWindow == null || _controlPanelWindow == null || _readerViewModel == null) return;
+
+            // 保存阅读窗口大小和位置到设置
+            SaveReaderWindowBounds();
 
             // 保存阅读进度
             _readerViewModel.SaveProgress();
@@ -360,6 +396,14 @@ namespace TReader
                 {
                     DataContext = _tocViewModel
                 };
+
+                // 暂停阅读窗口自动隐藏，子窗口关闭时恢复
+                _readerWindow.SuspendAutoHide();
+                _tocWindow.Closed += (s, e) =>
+                {
+                    _readerWindow?.ResumeAutoHide();
+                    _readerWindow?.KeepVisible();
+                };
             }
 
             _tocWindow.ShowDialog(_readerWindow);
@@ -387,6 +431,14 @@ namespace TReader
                 _bookmarksWindow = new BookmarksWindow
                 {
                     DataContext = _bookmarksViewModel
+                };
+
+                // 暂停阅读窗口自动隐藏，子窗口关闭时恢复
+                _readerWindow.SuspendAutoHide();
+                _bookmarksWindow.Closed += (s, e) =>
+                {
+                    _readerWindow?.ResumeAutoHide();
+                    _readerWindow?.KeepVisible();
                 };
             }
 

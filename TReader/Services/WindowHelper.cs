@@ -19,7 +19,23 @@ namespace TReader.Services
         [DllImport("user32.dll")]
         public static extern short GetAsyncKeyState(int vKey);
 
+        [DllImport("user32.dll")]
+        private static extern int ShowCursor(bool fShow);
+
         public const int VK_CONTROL = 0x11;
+
+        private static bool _cursorVisible = true;
+
+        /// <summary>
+        /// 显示或隐藏鼠标指针。
+        /// </summary>
+        public static void SetCursorVisible(bool visible)
+        {
+            if (_cursorVisible == visible) return;
+
+            ShowCursor(visible);
+            _cursorVisible = visible;
+        }
 
         public static void HideFromAltTab(Window window)
         {

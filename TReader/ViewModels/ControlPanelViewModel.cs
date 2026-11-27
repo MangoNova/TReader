@@ -95,13 +95,13 @@ public class ControlPanelViewModel : ViewModelBase
     }
 
     public IBrush ShelfNavBackground =>
-        !IsSettingsMode && !IsTutorialMode ? Brush.Parse("#16A34A") : Brushes.Transparent;
+        !IsSettingsMode && !IsTutorialMode ? Brush.Parse("#6366F1") : Brushes.Transparent;
 
     public IBrush SettingsNavBackground =>
-        IsSettingsMode ? Brush.Parse("#16A34A") : Brushes.Transparent;
+        IsSettingsMode ? Brush.Parse("#6366F1") : Brushes.Transparent;
 
     public IBrush TutorialNavBackground =>
-        IsTutorialMode ? Brush.Parse("#16A34A") : Brushes.Transparent;
+        IsTutorialMode ? Brush.Parse("#6366F1") : Brushes.Transparent;
 
     public IBrush ShelfNavForeground =>
         !IsSettingsMode && !IsTutorialMode ? Brushes.White : Brush.Parse("#64748B");
@@ -183,10 +183,10 @@ public class ControlPanelViewModel : ViewModelBase
     public IBrush WhitePreviewBackground => new SolidColorBrush(WhiteThemeBackground);
 
     public IBrush BlackThemeCardBorder =>
-        IsBlackThemeSelected ? Brush.Parse("#27AE60") : Brush.Parse("#3A3A3A");
+        IsBlackThemeSelected ? Brush.Parse("#6366F1") : Brush.Parse("#2D2A45");
 
     public IBrush WhiteThemeCardBorder =>
-        IsWhiteThemeSelected ? Brush.Parse("#27AE60") : Brush.Parse("#555555");
+        IsWhiteThemeSelected ? Brush.Parse("#6366F1") : Brush.Parse("#E2E8F0");
 
     public string? FontFamily
     {

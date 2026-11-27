@@ -2,18 +2,111 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="TReader.App"
              xmlns:local="using:TReader"
-             RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
-
-
+             RequestedThemeVariant="Light">
 
     <Application.DataTemplates>
         <local:ViewLocator/>
     </Application.DataTemplates>
-  
+
+    <!-- 统一色系：靛蓝 + 石板灰 -->
+    <Application.Resources>
+        <!-- 主色 -->
+        <SolidColorBrush x:Key="PrimaryBrush" Color="#6366F1"/>
+        <SolidColorBrush x:Key="PrimaryHoverBrush" Color="#4F46E5"/>
+        <SolidColorBrush x:Key="PrimaryLightBrush" Color="#EEF2FF"/>
+        <SolidColorBrush x:Key="PrimaryLighterBrush" Color="#E0E7FF"/>
+
+        <!-- 文字 -->
+        <SolidColorBrush x:Key="TextPrimaryBrush" Color="#1E293B"/>
+        <SolidColorBrush x:Key="TextSecondaryBrush" Color="#64748B"/>
+        <SolidColorBrush x:Key="TextMutedBrush" Color="#94A3B8"/>
+
+        <!-- 表面 -->
+        <SolidColorBrush x:Key="SurfaceBrush" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="SurfaceAltBrush" Color="#F8FAFC"/>
+        <SolidColorBrush x:Key="BorderBrush" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="BorderLightBrush" Color="#F1F5F9"/>
+
+        <!-- 危险 -->
+        <SolidColorBrush x:Key="DangerBrush" Color="#EF4444"/>
+        <SolidColorBrush x:Key="DangerLightBrush" Color="#FEF2F2"/>
+        <SolidColorBrush x:Key="DangerHoverBrush" Color="#FECACA"/>
+
+        <!-- 深色弹窗 -->
+        <SolidColorBrush x:Key="DarkBgBrush" Color="#1E1B2E"/>
+        <SolidColorBrush x:Key="DarkSurfaceBrush" Color="#2A2650"/>
+        <SolidColorBrush x:Key="DarkTextBrush" Color="#E2E8F0"/>
+        <SolidColorBrush x:Key="DarkTextSecondaryBrush" Color="#8B8FA3"/>
+    </Application.Resources>
+
     <Application.Styles>
         <FluentTheme />
         <StyleInclude Source="avares://AvaloniaEdit/Themes/Fluent/AvaloniaEdit.xaml" />
         <StyleInclude Source="avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml" />
+
+        <!-- 全局按钮基础样式 -->
+        <Style Selector="Button">
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+        </Style>
+
+        <!-- 主按钮 -->
+        <Style Selector="Button.PrimaryButton">
+            <Setter Property="Background" Value="#6366F1"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.PrimaryButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4F46E5"/>
+        </Style>
+        <Style Selector="Button.PrimaryButton:pressed /template/ ContentPresenter">
+            <Setter Property="Background" Value="#4338CA"/>
+        </Style>
+
+        <!-- 次按钮 -->
+        <Style Selector="Button.SecondaryButton">
+            <Setter Property="Background" Value="#F1F5F9"/>
+            <Setter Property="Foreground" Value="#475569"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.SecondaryButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#E2E8F0"/>
+        </Style>
+
+        <!-- 危险按钮 -->
+        <Style Selector="Button.DangerButton">
+            <Setter Property="Background" Value="#FEF2F2"/>
+            <Setter Property="Foreground" Value="#EF4444"/>
+            <Setter Property="CornerRadius" Value="8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+        </Style>
+        <Style Selector="Button.DangerButton:pointerover /template/ ContentPresenter">
+            <Setter Property="Background" Value="#FECACA"/>
+        </Style>
+
+        <!-- 表单控件 -->
+        <Style Selector="Slider">
+            <Setter Property="Foreground" Value="#6366F1"/>
+        </Style>
+
+        <Style Selector="ComboBox">
+            <Setter Property="Background" Value="White"/>
+            <Setter Property="Foreground" Value="#1E293B"/>
+            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="8"/>
+        </Style>
+
+        <Style Selector="ProgressBar">
+            <Setter Property="Foreground" Value="#6366F1"/>
+        </Style>
+
+        <!-- 滚动条极简 -->
+        <Style Selector="ScrollViewer">
+            <Setter Property="AllowAutoHide" Value="True"/>
+        </Style>
     </Application.Styles>
 </Application>

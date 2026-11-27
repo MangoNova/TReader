@@ -43,21 +43,21 @@ public partial class ReaderView : UserControl
         // 初始化期间不保存进度
         if (_isInitializingScroll) return;
 
-        // 防抖：至少间隔 500ms 才保存一次
+        // 获取当前可见区域顶部的文档行，窗口大小变化时比中间行更稳定
+        if (_textEditor?.TextArea?.TextView == null || DataContext is not ReaderViewModel vm) return;
+
+        var textView = _textEditor.TextArea.TextView;
+        var topLine = textView.GetDocumentLineByVisualTop(textView.ScrollOffset.Y);
+        if (topLine == null) return;
+
+        // AvaloniaEdit 的 LineNumber 从 1 开始，统一转换为 0-based
+        // 先立即更新当前行，避免按书签时读取到旧位置
+        vm.UpdateCurrentLine(topLine.LineNumber - 1, saveProgress: false);
+
+        // 写入磁盘做防抖，至少间隔 500ms 才保存一次
         if ((DateTime.Now - _lastScrollSaveTime).TotalMilliseconds < 500) return;
         _lastScrollSaveTime = DateTime.Now;
-
-        // 获取当前可见区域顶部的文档行，窗口大小变化时比中间行更稳定
-        if (_textEditor?.TextArea?.TextView != null && DataContext is ReaderViewModel vm)
-        {
-            var textView = _textEditor.TextArea.TextView;
-            var topLine = textView.GetDocumentLineByVisualTop(textView.ScrollOffset.Y);
-            if (topLine != null)
-            {
-                // AvaloniaEdit 的 LineNumber 从 1 开始，统一转换为 0-based
-                vm.UpdateCurrentLine(topLine.LineNumber - 1);
-            }
-        }
+        vm.SaveProgress();
     }
 
     private void OnPreviewKeyDown(object? sender, Avalonia.Input.KeyEventArgs e)

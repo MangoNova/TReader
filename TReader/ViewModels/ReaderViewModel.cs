@@ -308,9 +308,10 @@ public class ReaderViewModel : ViewModelBase
     }
 
     /// <summary>
-    /// 根据显示文本的滚动位置更新原始阅读进度并保存
+    /// 根据显示文本的滚动位置更新原始阅读进度。
+    /// saveProgress 为 true 时立即写入进度，用于关键跳转；滚动时可传 false 由调用方防抖保存。
     /// </summary>
-    public void UpdateCurrentLine(int displayLineNumber)
+    public void UpdateCurrentLine(int displayLineNumber, bool saveProgress = true)
     {
         var originalLine = DisplayLineToOriginalLine(displayLineNumber);
         _currentReadLine = originalLine;
@@ -323,7 +324,10 @@ public class ReaderViewModel : ViewModelBase
         }
 
         // 保存进度
-        SaveProgress();
+        if (saveProgress)
+        {
+            SaveProgress();
+        }
     }
 
     /// <summary>

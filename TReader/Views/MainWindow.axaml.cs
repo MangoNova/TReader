@@ -10,7 +10,9 @@ public partial class MainWindow : Window
 {
     private Avalonia.Threading.DispatcherTimer _timer;
     private Avalonia.Threading.DispatcherTimer _hideDelayTimer;
+    private Avalonia.Threading.DispatcherTimer _cursorHideTimer;
     private bool _isResizing;
+    private int _autoHideSuspendCount;
     private WindowEdge _resizeEdge;
     private Avalonia.PixelPoint _resizeStartScreen;
     private double _startWidth;
@@ -55,22 +57,56 @@ public partial class MainWindow : Window
         {
             _hideDelayTimer.Stop();
 
-            // 缩放中或按住 Ctrl 时不隐藏
-            if (_isResizing || IsControlPressed()) return;
+            // 缩放中、按住 Ctrl 或正在操作子窗口时不隐藏
+            if (_isResizing || IsControlPressed() || _autoHideSuspendCount > 0) return;
 
             if (container != null) container.Opacity = 0;
             Topmost = false;
         };
 
+        // 鼠标静止后隐藏指针
+        _cursorHideTimer = new Avalonia.Threading.DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(2000)
+        };
+        _cursorHideTimer.Tick += (s, e) =>
+        {
+            _cursorHideTimer.Stop();
+
+            if (_isResizing || IsControlPressed())
+            {
+                RestartCursorHideTimer();
+                return;
+            }
+
+            if (container != null && container.Opacity <= 0)
+            {
+                RestoreCursor();
+                return;
+            }
+
+            TReader.Services.WindowHelper.SetCursorVisible(false);
+        };
+
+        // 监听鼠标活动，移动时恢复指针并重新计时
+        this.AddHandler(
+            Avalonia.Input.InputElement.PointerMovedEvent,
+            OnPointerActivity,
+            Avalonia.Interactivity.RoutingStrategies.Tunnel | Avalonia.Interactivity.RoutingStrategies.Bubble,
+            true);
+
         // 鼠标进入时取消延迟隐藏
         this.PointerEntered += (s, e) =>
         {
             _hideDelayTimer.Stop();
+            RestartCursorHideTimer();
         };
 
         // 双击显示：只有按住 Ctrl 时才响应
         this.DoubleTapped += (s, e) =>
         {
+            HandlePointerActivity();
+
             // 检查 Ctrl 键是否被按下
             if (!IsControlPressed())
             {
@@ -84,12 +120,65 @@ public partial class MainWindow : Window
         // 移出后延迟隐藏，避免鼠标稍微移开界面就立刻消失
         this.PointerExited += (s, e) =>
         {
-            // 如果正在缩放或按住 Ctrl，不要触发隐藏
-            if (_isResizing || IsControlPressed()) return;
+            RestoreCursor();
+
+            // 如果正在缩放、按住 Ctrl 或正在操作子窗口，不要触发隐藏
+            if (_isResizing || IsControlPressed() || _autoHideSuspendCount > 0) return;
 
             _hideDelayTimer.Start();
         };
 
+    }
+
+    /// <summary>
+    /// 暂停自动隐藏（打开子窗口时调用），可重入。
+    /// </summary>
+    public void SuspendAutoHide()
+    {
+        _autoHideSuspendCount++;
+        _hideDelayTimer.Stop();
+    }
+
+    /// <summary>
+    /// 恢复自动隐藏（子窗口关闭时调用），与 SuspendAutoHide 配对。
+    /// </summary>
+    public void ResumeAutoHide()
+    {
+        if (_autoHideSuspendCount > 0) _autoHideSuspendCount--;
+    }
+
+    /// <summary>
+    /// 确保阅读窗口可见并置顶（子窗口关闭后调用）。
+    /// </summary>
+    public void KeepVisible()
+    {
+        var container = this.FindControl<Grid>("ContentContainer");
+        if (container != null) container.Opacity = 1;
+        Topmost = true;
+    }
+
+    private void OnPointerActivity(object? sender, Avalonia.Input.PointerEventArgs e)
+    {
+        HandlePointerActivity();
+    }
+
+    private void HandlePointerActivity()
+    {
+        TReader.Services.WindowHelper.SetCursorVisible(true);
+        RestartCursorHideTimer();
+    }
+
+    private void RestartCursorHideTimer()
+    {
+        _cursorHideTimer.Stop();
+        if (_isResizing) return;
+        _cursorHideTimer.Start();
+    }
+
+    private void RestoreCursor()
+    {
+        _cursorHideTimer.Stop();
+        TReader.Services.WindowHelper.SetCursorVisible(true);
     }
 
     private static bool IsControlPressed()
@@ -109,6 +198,7 @@ public partial class MainWindow : Window
         }
 
         _hideDelayTimer.Stop();
+        HandlePointerActivity();
         _isResizing = true;
         _resizeEdge = edge;
         _resizeStartScreen = this.PointToScreen(e.GetPosition(this));
@@ -189,6 +279,7 @@ public partial class MainWindow : Window
 
         _isResizing = false;
         e.Pointer.Capture(null);
+        RestartCursorHideTimer();
 
         // 缩放结束后恢复当前顶部行，避免进度因视口变化偏移
         if (DataContext is TReader.ViewModels.ReaderViewModel vm)
@@ -201,5 +292,11 @@ public partial class MainWindow : Window
     {
         base.OnOpened(e);
         TReader.Services.WindowHelper.HideFromAltTab(this);
+    }
+
+    protected override void OnClosed(EventArgs e)
+    {
+        RestoreCursor();
+        base.OnClosed(e);
     }
 }
