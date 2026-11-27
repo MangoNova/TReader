@@ -73,36 +73,63 @@ public partial class ReaderView : UserControl
             case Avalonia.Input.Key.Up:
             case Avalonia.Input.Key.Left:
             case Avalonia.Input.Key.PageUp:
-                ScrollPage(false);
                 e.Handled = true;
+                ScrollPage(false);
                 break;
 
             case Avalonia.Input.Key.Down:
             case Avalonia.Input.Key.Right:
             case Avalonia.Input.Key.PageDown:
-                ScrollPage(true);
                 e.Handled = true;
+                ScrollPage(true);
                 break;
 
             case Avalonia.Input.Key.B:
-                vm.ToggleBookmark();
                 e.Handled = true;
+                vm.ToggleBookmark();
                 break;
 
             case Avalonia.Input.Key.M:
-                vm.OpenBookmarks();
                 e.Handled = true;
+                vm.OpenBookmarks();
                 break;
         }
     }
 
     private void ScrollPage(bool forward)
     {
+        try
+        {
+            DoScrollPage(forward);
+        }
+        catch
+        {
+            // 任何异常都不应导致翻页完全失效，退回纯像素滚动
+            try
+            {
+                if (_textEditor?.TextArea is Avalonia.Controls.Primitives.IScrollable scrollable)
+                {
+                    var vh = scrollable.Viewport.Height;
+                    if (vh <= 0 && _textEditor != null) vh = _textEditor.Bounds.Height;
+                    if (vh > 0)
+                    {
+                        var maxOff = Math.Max(0, scrollable.Extent.Height - vh);
+                        var ty = Math.Clamp(scrollable.Offset.Y + (forward ? vh : -vh), 0, maxOff);
+                        scrollable.Offset = new Vector(scrollable.Offset.X, ty);
+                    }
+                }
+            }
+            catch { }
+        }
+    }
+
+    private void DoScrollPage(bool forward)
+    {
         if (_textEditor?.TextArea == null) return;
 
         _textEditor.ApplyTemplate();
 
-        // 像素级计算翻页落点（与原实现一致，稳定可靠）
+        // 像素级计算翻页落点（直接设置 Offset，与最初可工作的实现一致）
         var scrollable = (Avalonia.Controls.Primitives.IScrollable)_textEditor.TextArea;
         var viewportHeight = scrollable.Viewport.Height;
         if (viewportHeight <= 0) viewportHeight = _textEditor.ViewportHeight;
@@ -115,20 +142,26 @@ public partial class ReaderView : UserControl
 
         if (Math.Abs(targetY - currentY) < 0.5) return;
 
-        // 把落点吸附到所在行的顶部，保证每页从完整行的边界开始，避免出现"半行"跨页
-        var textView = _textEditor.TextArea.TextView;
-        if (textView != null)
+        // 尝试把落点吸附到所在行的顶部，避免半行跨页；失败则退回纯像素滚动
+        try
         {
-            var targetLine = textView.GetDocumentLineByVisualTop(targetY);
-            if (targetLine != null)
+            var textView = _textEditor.TextArea.TextView;
+            if (textView != null)
             {
-                // ScrollTo 会把该行顶部对齐到视口顶部，是行边界而非任意像素
-                _textEditor.ScrollTo(targetLine.LineNumber, -1, AvaloniaEdit.Rendering.VisualYPosition.LineTop, 0, 0);
-                return;
+                var targetLine = textView.GetDocumentLineByVisualTop(targetY);
+                if (targetLine != null && targetLine.LineNumber > 0)
+                {
+                    var snappedY = textView.GetVisualTopByDocumentLine(targetLine.LineNumber);
+                    // 吸附后仍需确实滚动了，避免落点太近导致"没反应"
+                    if (Math.Abs(snappedY - currentY) >= 0.5)
+                    {
+                        targetY = Math.Clamp(snappedY, 0, maxOffset);
+                    }
+                }
             }
         }
+        catch { /* 行对齐失败时使用原始像素落点 */ }
 
-        // 兜底：直接像素滚动
         scrollable.Offset = new Vector(scrollable.Offset.X, targetY);
     }
 
