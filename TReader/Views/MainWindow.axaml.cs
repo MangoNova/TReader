@@ -200,6 +200,13 @@ public partial class MainWindow : Window
         _hideDelayTimer.Stop();
         HandlePointerActivity();
         _isResizing = true;
+
+        // 缩放期间宽度变化会导致换行重排，暂停阅读进度更新，避免位置漂移
+        if (DataContext is TReader.ViewModels.ReaderViewModel resizeVm)
+        {
+            resizeVm.IsWindowResizing = true;
+        }
+
         _resizeEdge = edge;
         _resizeStartScreen = this.PointToScreen(e.GetPosition(this));
         _startWidth = Width;
@@ -281,9 +288,10 @@ public partial class MainWindow : Window
         e.Pointer.Capture(null);
         RestartCursorHideTimer();
 
-        // 缩放结束后恢复当前顶部行，避免进度因视口变化偏移
+        // 缩放结束后恢复阅读进度更新，并把当前顶部行重新对齐到完整行的边界
         if (DataContext is TReader.ViewModels.ReaderViewModel vm)
         {
+            vm.IsWindowResizing = false;
             vm.RequestScrollToCurrentLine();
         }
     }

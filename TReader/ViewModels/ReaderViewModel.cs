@@ -30,6 +30,12 @@ public class ReaderViewModel : ViewModelBase
     private IBrush _foregroundBrush = new SolidColorBrush(Color.Parse(Defaults.ForegroundColor));
     private readonly ObservableCollection<BookmarkInfo> _bookmarks = new();
 
+    /// <summary>
+    /// 窗口正在缩放中。缩放时宽度变化会导致换行重排，ScrollOffset 对应的行号会漂移，
+    /// 此时暂停进度更新，等缩放结束后再按当前行重新对齐。
+    /// </summary>
+    public bool IsWindowResizing { get; set; }
+
     public string DisplayText
     {
         get => _displayText;

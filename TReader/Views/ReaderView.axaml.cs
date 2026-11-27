@@ -46,6 +46,10 @@ public partial class ReaderView : UserControl
         // 获取当前可见区域顶部的文档行，窗口大小变化时比中间行更稳定
         if (_textEditor?.TextArea?.TextView == null || DataContext is not ReaderViewModel vm) return;
 
+        // 窗口缩放期间宽度变化会导致换行重排，同一 ScrollOffset 对应的行号会漂移，
+        // 此时暂停进度更新，避免阅读位置被错误改写；缩放结束后由 RequestScrollToCurrentLine 重新对齐。
+        if (vm.IsWindowResizing) return;
+
         var textView = _textEditor.TextArea.TextView;
         var topLine = textView.GetDocumentLineByVisualTop(textView.ScrollOffset.Y);
         if (topLine == null) return;
@@ -94,31 +98,62 @@ public partial class ReaderView : UserControl
 
     private void ScrollPage(bool forward)
     {
-        if (_textEditor?.TextArea == null) return;
+        if (_textEditor?.TextArea?.TextView == null) return;
 
         _textEditor.ApplyTemplate();
 
-        // 直接按像素滚动，避免长段落/自动换行时按文档行翻页卡住
+        var textView = _textEditor.TextArea.TextView;
         var scrollable = (Avalonia.Controls.Primitives.IScrollable)_textEditor.TextArea;
+
         var viewportHeight = scrollable.Viewport.Height;
-        if (viewportHeight <= 0)
+        if (viewportHeight <= 0) viewportHeight = _textEditor.ViewportHeight;
+        if (viewportHeight <= 0) viewportHeight = _textEditor.Bounds.Height;
+        if (viewportHeight <= 0) return;
+
+        var lineCount = _textEditor.LineCount;
+        if (lineCount <= 0) return;
+
+        // 当前视口顶部所在的文档行（基于行高树，自动换行也适用）
+        var topDocLine = textView.GetDocumentLineByVisualTop(scrollable.Offset.Y);
+        if (topDocLine == null) return;
+        int topLine = topDocLine.LineNumber;
+
+        // 该行在文档中的精确顶部 Y（1-based 行号）
+        double topLineY = textView.GetVisualTopByDocumentLine(topLine);
+
+        // 计算满一屏所覆盖的文档行数：找到顶部 Y 落在 [topLineY, topLineY + viewportHeight) 内的最后一行
+        // 下一页从"当前页最后完整可见行"的下一行开始，保证每页顶部都是完整行的边界，
+        // 不会出现一行被上下两页各显示一半的情况。
+        int nextLine = topLine;
+        if (forward)
         {
-            viewportHeight = _textEditor.ViewportHeight;
+            for (int line = topLine + 1; line <= lineCount; line++)
+            {
+                double lineY = textView.GetVisualTopByDocumentLine(line);
+                if (lineY - topLineY >= viewportHeight - 0.5) break;
+                nextLine = line;
+            }
+            // 一行高度超过整屏时至少前进一行，避免卡住
+            if (nextLine == topLine && topLine < lineCount) nextLine = topLine + 1;
+        }
+        else
+        {
+            // 向后翻页：找到最后一个顶部仍 >= topLineY - viewportHeight 的行作为新页顶部
+            for (int line = topLine - 1; line >= 1; line--)
+            {
+                double lineY = textView.GetVisualTopByDocumentLine(line);
+                if (topLineY - lineY >= viewportHeight - 0.5) break;
+                nextLine = line;
+            }
+            // 一行高度超过整屏时至少后退一行，避免卡住
+            if (nextLine == topLine && topLine > 1) nextLine = topLine - 1;
         }
 
-        if (viewportHeight <= 0)
-        {
-            viewportHeight = _textEditor.Bounds.Height;
-        }
-
+        double targetY = textView.GetVisualTopByDocumentLine(nextLine);
         var maxOffset = Math.Max(0, scrollable.Extent.Height - viewportHeight);
-        var currentY = scrollable.Offset.Y;
-        var targetY = Math.Clamp(currentY + (forward ? viewportHeight : -viewportHeight), 0, maxOffset);
+        targetY = Math.Clamp(targetY, 0, maxOffset);
 
-        if (Math.Abs(targetY - currentY) < 0.5)
-        {
-            return;
-        }
+        if (Math.Abs(targetY - scrollable.Offset.Y) < 0.5) return;
 
         scrollable.Offset = new Vector(scrollable.Offset.X, targetY);
     }
